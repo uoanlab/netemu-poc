@@ -1,0 +1,2 @@
+id,name,type,before,after
+21,"sslstrip","modify","https","http"
