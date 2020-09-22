@@ -1,3 +1,8 @@
+/**
+ * @file cmd_server.c
+ * @brief コマンドサーバについての設定: 基本的にエミュレータのパケット操作に関するパラメータはこれから操作される。
+**/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +15,12 @@
 #include "connection.h"
 #include "cmd_server.h"
 
+/**
+ * コマンドサーバのメイン処理 <br>
+ * スレッドでの無限ループで回してコマンドを受け取ったら操作が開始される。 <br>
+ * nwsimulator.cから呼ばれてる <br>
+ * @param arg コネクションテーブル
+**/
 void *cmd_loop(void  *arg){
   struct connection *cnxtbl = (struct connection *)arg;
   /* recieve commands from controller */
@@ -56,7 +67,14 @@ void *cmd_loop(void  *arg){
   }
 }
 
-
+/**
+ * 条件操作コマンドの実行処理の関数 <br>
+ * 受け取ったコマンドを条件ごとに実行する <br>
+ * cmd_loopから呼ばれてる <br>
+ * @param csk クライアントソケット
+ * @param cmd 受け取ったコマンド列
+ * @param cnxtbl コネクションテーブル
+ **/
 void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
   char *flag = strtok(cmd, " ");
   int len;
@@ -385,6 +403,11 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
     printf("BAD INSTRUCTION\n");
   }
 }
+
+/**
+ * insert処理時に条件を初期化する関数 <br>
+ * @param arg pass_insert
+**/
 void init_pass(void *arg){
   pass_insert *pass;
   pass = arg;

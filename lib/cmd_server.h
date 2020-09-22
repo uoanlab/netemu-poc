@@ -1,3 +1,12 @@
+/**
+ * @file cmd_server.h
+ * @brief コマンドサーバについての設定:基本的にエミュレータのパケット操作に関するパラメータはこれから操作される。
+**/
+
+/**
+ * コマンドサーバのメイン処理.
+ * @param argc arg
+**/
 void *cmd_loop(void *arg);
 void proc_cmd(int csk, char *cmd, struct connection *cnxtbl);
 

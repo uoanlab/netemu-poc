@@ -1,3 +1,8 @@
+/**
+ * @file connection.c
+ * @brief コネクションテーブルのためのファイル 
+**/
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -14,9 +19,18 @@
 
 struct connection *free_cnxentry_queue = NULL;
 
+/**
+ * コネクションテーブルの初期化
+ * @param cnxtbl コネクションテーブル
+**/
 void init_cnxtbl(struct connection *cnxtbl){
   cnxtbl->next = NULL;
 }
+
+/**
+ * コネクションテーブルをプリントするための関数
+ * @param cnxtbl コネクションテーブル
+**/
 void print_cnxtbl(struct connection *cnxtbl){
   struct connection *c;
   char ipstr[16];
@@ -51,10 +65,10 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
   int ret_len=0;
   int len;
   len = snprintf(buf,
-		 size,
-		 "=========================================== Connection  Table ==========================================\n" \
-		 "| id| source ipaddr |  dest ipaddr  |proto|sport|dport|                      flag                      |\n" \
-		 "--------------------------------------------------------------------------------------------------------\n");
+     size,
+     "=========================================== Connection  Table ==========================================\n" \
+     "| id| source ipaddr |  dest ipaddr  |proto|sport|dport|                      flag                      |\n" \
+     "--------------------------------------------------------------------------------------------------------\n");
   buf+=len; size-=len;
   ret_len += len;
 
@@ -63,17 +77,17 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
   struct connection *c;
   for(c=cnxtbl->next;(c && 0<(size/100)-1);c=c->next){
     len = snprintf(buf,
-		   size,
-		   "|%3d|%15s|%15s|%5s|%5d|%5d",
-		   c->id,
-		   ((iptostr(c->saddr, ipstr), ipstr)),
-		   ((iptostr(c->daddr, ipstr2), ipstr2)),
-		   (c->proto == IPPROTO_TCP)  ? " TCP " :
-		   (c->proto == IPPROTO_UDP)  ? " UDP " :
-		   (c->proto == IPPROTO_ICMP) ? " ICMP" : "Other",
-		   ntohs(c->sport),
-		   ntohs(c->dport)
-		   );
+       size,
+       "|%3d|%15s|%15s|%5s|%5d|%5d",
+       c->id,
+       ((iptostr(c->saddr, ipstr), ipstr)),
+       ((iptostr(c->daddr, ipstr2), ipstr2)),
+       (c->proto == IPPROTO_TCP)  ? " TCP " :
+       (c->proto == IPPROTO_UDP)  ? " UDP " :
+       (c->proto == IPPROTO_ICMP) ? " ICMP" : "Other",
+       ntohs(c->sport),
+       ntohs(c->dport)
+       );
     buf+=len; size-=len;
     ret_len += len;
     len = (c->op.loss) ?
@@ -107,6 +121,11 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
 //  print_saved_pkt_queue(cnxtbl);
   return ret_len;
 }
+
+/**
+ * コネクションエントリの初期化
+ * @param entry コネクションエントリ
+**/
 void init_cnxentry(struct connection *entry){
   entry->id          = 1;
   entry->saddr       = 0;
@@ -142,6 +161,11 @@ struct connection *malloc_cnxentry(){
 
   return entry;
 }
+
+/**
+ * コネクションエントリのfree
+ * @param entry コネクションエントリ
+**/
 void free_cnxentry(struct connection *entry){
   struct packet *free;
   for(free=pop(&entry->saved_pkt_queue);free;free=pop(&entry->saved_pkt_stack)) free_pkt(free);
@@ -151,12 +175,25 @@ void free_cnxentry(struct connection *entry){
   free_cnxentry_queue = entry;
   pthread_mutex_unlock(&mutex);
 }
+
+/**
+ * コネクションエントリの追加
+ * @param cnxtbl コネクションテーブル
+ * @param cnxtbl コネクションエントリ
+**/
 void add_cnxentry(struct connection *cnxtbl,struct connection *entry){
   struct connection *c;
   for(c=cnxtbl; c->next!=NULL; c=c->next) 
     entry->id++;
   c->next = entry;
 }
+
+/**
+ * コネクションエントリの消去
+ * 全部一致したら消去だけど指定するのはidだけで良さそう
+ * @param cnxtbl コネクションテーブル
+ * @param id 消去するテーブルのid
+**/
 void del_cnxentry(struct connection *cnxtbl, int id, in_addr_t saddr, in_addr_t daddr, u_int8_t proto, u_int16_t sport, u_int16_t dport){
   struct connection *c;
   for(c=cnxtbl;c->next;){
@@ -174,6 +211,11 @@ void del_cnxentry(struct connection *cnxtbl, int id, in_addr_t saddr, in_addr_t 
     c=c->next;
   }
 }
+
+/**
+ * コネクションエントリを全消去(free)
+ * @param cnxtbl コネクションテーブル
+**/
 void clear_cnxtbl(struct connection *cnxtbl){
   struct connection *c;
   for(c=cnxtbl;c->next;){
@@ -185,6 +227,12 @@ void clear_cnxtbl(struct connection *cnxtbl){
 
 void update_cnxentry(struct connection *cnxtbl, struct connection *entry){}
 
+/**
+ * コネクションエントリを探す関数 <br>
+ * パケットのIPを見てそれに対して探索
+ * @param cnxtbl コネクションテーブル
+ * @param pkt 対象パケット
+**/
 struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt){
   in_addr_t saddr = pkt->iphdr->saddr;
   in_addr_t daddr = pkt->iphdr->daddr; 
@@ -224,6 +272,7 @@ struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt
   }
   return NULL;
 }
+
 int set_all(struct connection *cnxtbl, int id, int loss, int delay, char *before, int blen, char *after, int alen){
   struct connection *c;
   for(c=cnxtbl->next;c;c=c->next){
