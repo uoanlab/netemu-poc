@@ -1,8 +1,3 @@
-/**
- * @file arp.c
- * @brief arpに関連する処理
-**/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,13 +12,6 @@
 #include "common.h"
 #include "packet.h"
 
-/**
- * ARPパケットをREPLYとREQUESTで判別して処理を行う<br>
- * ARPREQUESTならARP_REPLYを返す.<br>
- * ARPREPLYならARP TABLEに情報追加.<br>
- * @param iface パケットを受け取ったinterfaceの情報
- * @param arphdr 受け取ったarpパケット
-**/
 void proc_arp(struct interface *iface, struct arphdr *arphdr){
   uint16_t opcode = ntohs(arphdr->ar_op);
   u_char *smac = (u_char *)(arphdr+1);
@@ -49,10 +37,6 @@ void proc_arp(struct interface *iface, struct arphdr *arphdr){
 //  (*arptbl)->entries = NULL;
 //}
 
-/**
- * arpテーブルを出力する関数 
- * @param arptbl ARPTABLE
-**/
 void print_arptbl(struct arpentry *arptbl){
   char ipstr[16];
   char macstr[16];
@@ -68,12 +52,6 @@ void print_arptbl(struct arpentry *arptbl){
   printf("===================\n");
 }
 
-/**
- * arptableに追加時にパケットのmallocを行う関数
- * ipaddrとmacaddrを付加することもやってるけど分けた方が良いかも
- * @param ipaddr 追加するip
- * @param macaddr 追加するmac
-**/
 struct arpentry *make_arpentry(in_addr_t ipaddr, u_char *macaddr){
   struct arpentry *entry = malloc(sizeof(struct arpentry));
   entry->ipaddr = ipaddr;
@@ -81,11 +59,6 @@ struct arpentry *make_arpentry(in_addr_t ipaddr, u_char *macaddr){
   return entry;
 }
 
-/**
- * arptableに追加する処理
- * @param arptbl ARPTABLE
- * @param entry 追加されるノード
-**/
 void add_arpentry(struct arpentry *arptbl, struct arpentry *entry){
   pthread_mutex_lock(&mutex);
   entry->next = arptbl->next;
@@ -95,13 +68,6 @@ void add_arpentry(struct arpentry *arptbl, struct arpentry *entry){
 
 void update_arpentry(struct arpentry *arptbl, struct arpentry *entry){}
 
-/**
- * arptablにMACがあるかを探す処理e
- * @param arptbl ARPTABLE
- * @param entry 追加されるノード
- * @return 見つかったら,そのnodeを返す.
- * 見つからなかったらNULLを返す
-**/
 struct arpentry *search_arpentry(struct arpentry *arptbl, in_addr_t search_ip){
   struct arpentry *e;
   //printf("arp test8.0\n");
@@ -114,15 +80,7 @@ struct arpentry *search_arpentry(struct arpentry *arptbl, in_addr_t search_ip){
   return NULL;
 }
 
-/**
- * ARP REPLYを作成する関数
- * @param srcmac 送信元MAC
- * @param srcip 送信元ip 
- * @param dstmac 送信先MAC
- * @param dstip 送信先ip 
- * @return 作成したnodeを返す.
-**/
-struct packet *make_arpreply(u_char *srcmac, in_addr_t srcip, u_char *dstmac, in_addr_t dstip){
+struct packet * make_arpreply(u_char *srcmac, in_addr_t srcip, u_char *dstmac, in_addr_t dstip){
   struct packet *reply = malloc_pkt();
   /* make ether header */
   reply->ethhdr = (struct ethhdr *)reply->buf;
@@ -152,13 +110,6 @@ struct packet *make_arpreply(u_char *srcmac, in_addr_t srcip, u_char *dstmac, in
   return reply;
 }
 
-/**
- * ARP REQUESTを作成する関数
- * @param request 送信するリクエストのパケットポインタ
- * @param srcip 送信元ip 
- * @param tgtip 送信先ip 
- * @return 作成したnodeを返す.
-**/
 void make_arprequest(struct packet *request, u_char *srcmac, in_addr_t srcip, in_addr_t tgtip){
   /* make ether header */
   request->ethhdr = (struct ethhdr *)request->buf;

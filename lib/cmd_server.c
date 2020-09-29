@@ -1,13 +1,9 @@
-/**
- * @file cmd_server.c
- * @brief コマンドサーバについての設定: 基本的にエミュレータのパケット操作に関するパラメータはこれから操作される。
-**/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <math.h>
 
 
 #include "common.h"
@@ -15,12 +11,6 @@
 #include "connection.h"
 #include "cmd_server.h"
 
-/**
- * コマンドサーバのメイン処理 <br>
- * スレッドでの無限ループで回してコマンドを受け取ったら操作が開始される。 <br>
- * nwsimulator.cから呼ばれてる <br>
- * @param arg コネクションテーブル
-**/
 void *cmd_loop(void  *arg){
   struct connection *cnxtbl = (struct connection *)arg;
   /* recieve commands from controller */
@@ -67,14 +57,7 @@ void *cmd_loop(void  *arg){
   }
 }
 
-/**
- * 条件操作コマンドの実行処理の関数 <br>
- * 受け取ったコマンドを条件ごとに実行する <br>
- * cmd_loopから呼ばれてる <br>
- * @param csk クライアントソケット
- * @param cmd 受け取ったコマンド列
- * @param cnxtbl コネクションテーブル
- **/
+
 void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
   char *flag = strtok(cmd, " ");
   int len;
@@ -89,27 +72,60 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
     printf("Clear Connection Table\n");
     clear_cnxtbl(cnxtbl);
   }
-  else if(strcmp(flag, "generate") == 0){
-    printf("Generate Connection Entry\n");
-    in_addr_t saddr = inet_addr(strtok(NULL, " "));
-    in_addr_t daddr = inet_addr(strtok(NULL, " "));
+  else if(strcmp(flag, "generate") == 0){ printf("Generate Connection Entry\n");
+  //saddr setting
+    in_addr_t saddr;
+    struct ip_mask *saddr_mask;
+    struct ip_mask *daddr_mask;
+    saddr_mask = malloc(sizeof(struct ip_mask));
+    daddr_mask = malloc(sizeof(struct ip_mask));
+    init_ipmask(saddr_mask);
+    init_ipmask(daddr_mask);
 
+    struct port_tree *sport_tree;
+    struct port_tree *dport_tree;
+    sport_tree = malloc(sizeof(struct port_tree));
+    dport_tree = malloc(sizeof(struct port_tree));
+    init_port_tree(sport_tree);
+    init_port_tree(dport_tree);
+    char *saddr_char = strtok(NULL, " ");
+    char *daddr_char = strtok(NULL, " ");
     char *protonm = strtok(NULL, " ");
+    char *sport_char = strtok(NULL, " ");
+    char *dport_char = strtok(NULL, " ");
+    sport_tree = array_port_parse(sport_char);
+    dport_tree = array_port_parse(dport_char);
+    print_port(sport_tree);
+    print_port(dport_tree);
+
+    int saddr_any_flag = 0;
+    if(strcmp(saddr_char, "any") == 0 ){
+      saddr_any_flag = 1;
+    }
+    else{
+      saddr_mask = array_ip_parse(saddr_char);
+    }
+  //daddr setting
+    in_addr_t daddr;
+    int daddr_any_flag = 0;
+    if(strcmp(daddr_char, "any") == 0 ){
+      daddr_any_flag = 1;
+    }
+    else{
+      daddr_mask = array_ip_parse(daddr_char);
+    }
     u_int8_t proto = 0;
     if(strcmp(protonm, "TCP") == 0) proto = IPPROTO_TCP;
     else if(strcmp(protonm, "UDP") == 0) proto = IPPROTO_UDP;
     else if(strcmp(protonm, "ICMP") == 0) proto = IPPROTO_ICMP;
-    u_int16_t sport = htons(atoi(strtok(NULL, " ")));
-    u_int16_t dport = htons(atoi(strtok(NULL, " ")));
+    else if(strcmp(protonm, "any") == 0) proto = 252;
+//    u_int16_t sport = htons(atoi(strtok(NULL, " ")));
+//    u_int16_t dport = htons(atoi(strtok(NULL, " ")));
     struct connection *find;
-    if(!(find = generate_cnxentry(cnxtbl, saddr, daddr, proto, sport, dport))){
-      print_ip(saddr);
-      print_ip(daddr);
-      printf("sport:%d\n", sport);
-      printf("dport:%d\n", dport);
-      struct connection *entry = make_cnxentry(saddr, daddr, proto, sport, dport);
+//    if(!(find = generate_cnxentry(cnxtbl, saddr, daddr, proto, sport_tree, dport_tree, saddr_mask, daddr_mask, saddr_any_flag, daddr_any_flag))){
+      struct connection *entry = make_cnxentry(saddr, daddr, proto, sport_tree, dport_tree, saddr_mask, daddr_mask, saddr_any_flag, daddr_any_flag);
       add_cnxentry(cnxtbl, entry);
-    }
+//    }
   }
   else if(strcmp(flag, "delete") == 0){
     int id = atoi(strtok(NULL,  ""));
@@ -403,11 +419,6 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
     printf("BAD INSTRUCTION\n");
   }
 }
-
-/**
- * insert処理時に条件を初期化する関数 <br>
- * @param arg pass_insert
-**/
 void init_pass(void *arg){
   pass_insert *pass;
   pass = arg;
@@ -434,4 +445,130 @@ void init_pass(void *arg){
   pass->tos=0;
   pass->type=0;
   pass->code=0;
+}
+
+void init_ipmask(struct ip_mask *ip_mask){
+    ip_mask->addr = 0;
+    ip_mask->mask = 0;
+    ip_mask->next = NULL;
+    return ;
+}
+
+void add_ipmask(struct ip_mask *ip_mask, struct ip_mask *node){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask; tmp->next != NULL; tmp = tmp->next){}
+    tmp->next = node; 
+}
+
+void print_ipmask(struct ip_mask *ip_mask){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask->next; tmp != NULL; tmp = tmp->next){
+        printf("ip  : ");
+        print_ip(tmp->addr);
+        printf("mask: ");
+        print_ip(tmp->mask);
+    }
+}
+
+
+
+void string_to_ipmask(char *ipmask, in_addr_t *ip, in_addr_t *mask){
+	char *slash;
+	slash = strchr(ipmask, '/');
+    if(slash == NULL){
+        *ip = inet_addr(ipmask);
+        *mask = 4294967295;
+        return;
+    }
+    else{
+	    char *dot;
+	    dot = strchr(slash+1, '.');
+        *slash = '\0';
+        if(dot == NULL){
+            // CIDR
+            *ip  = inet_addr(ipmask);
+            int cidr = atoi(slash+1);
+            switch(cidr%8){
+            case(1):
+                *mask = 128;
+                break;
+            case(2):
+                *mask = 192;
+                break;
+            case(3):
+                *mask = 224;
+                break;
+            case(4):
+                *mask = 240;
+                break;
+            case(5):
+                *mask = 248;
+                break;
+            case(6):
+                *mask = 252;
+                break;
+            case(7):
+                *mask = 254;
+                break;
+            }
+
+            *mask = *mask << 8;
+            for(int i=1; 8*i<=cidr; i++){
+                if(i!=1) *mask = *mask << 8;
+                *mask += 255;
+            }
+            return;
+        }
+        else{
+            // 255.255.255.0
+            *ip = inet_addr(ipmask);
+            *mask = inet_addr(slash+1);
+            in_addr_t test;
+            test = inet_addr(slash+1);
+        }
+        return ;
+    }
+}
+
+struct ip_mask *array_ip_parse(char *arr){
+    struct ip_mask *ip_mask; 
+    ip_mask = malloc(sizeof(struct ip_mask));
+    init_ipmask(ip_mask);
+	  char *open_braket, *close_braket;
+    open_braket = strchr(arr, '[');
+    close_braket = strchr(arr, ']');
+    if(open_braket!=NULL){
+        *close_braket = '\0';
+        char *wordfirst = open_braket+1;
+        char *comma = strtok(wordfirst, ",");
+        while(1){
+            in_addr_t ip;
+            int mask;
+            if(comma == NULL) break;
+            struct ip_mask *node; 
+            node = malloc(sizeof(struct ip_mask));
+            init_ipmask(node);
+            string_to_ipmask(comma, &node->addr, &node->mask);
+            add_ipmask(ip_mask, node);
+            comma = strtok(NULL, ",");
+        }
+    }
+    else{
+        struct ip_mask *node; 
+        node = malloc(sizeof(struct ip_mask));
+        init_ipmask(node);
+        string_to_ipmask(arr, &node->addr, &node->mask);
+        add_ipmask(ip_mask, node);
+    }
+    return ip_mask;
+}
+
+struct ip_mask *search_ipmask(in_addr_t saddr, struct ip_mask *ip_mask){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask->next; tmp!=NULL; tmp=tmp->next){
+        if((saddr&tmp->mask) == (tmp->addr&tmp->mask)){
+            return tmp;
+        }
+    }
+    return NULL;
 }
