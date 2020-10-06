@@ -21,6 +21,12 @@ void init_cnxtbl(struct connection *cnxtbl){
   cnxtbl->sport_tree = malloc(sizeof(struct port_tree));
   cnxtbl->dport_tree = malloc(sizeof(struct port_tree));
 
+  cnxtbl->ipmask_saddr_root = malloc(sizeof(struct ipmask_root));
+  cnxtbl->ipmask_daddr_root = malloc(sizeof(struct ipmask_root));
+
+  init_ipmask_tree(cnxtbl->ipmask_saddr_root);
+  init_ipmask_tree(cnxtbl->ipmask_daddr_root);
+
   init_ipmask(cnxtbl->ipmask_saddr);
   init_ipmask(cnxtbl->ipmask_daddr);
   init_port_tree(cnxtbl->sport_tree);
@@ -55,6 +61,7 @@ void print_cnxtbl(struct connection *cnxtbl){
  //   (c->op.modify) ? printf("%s to %s ", c->op.mset.before, c->op.mset.after) : printf("x ");
  //   printf("|\n");
     printf("|%2d", c->id);
+    printf("\n");
   }
  // printf("===================================================================================================\n");
 //  print_saved_pkt_queue(cnxtbl);
@@ -77,10 +84,10 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
     len = snprintf(buf, size, "%d:\n", c->id);
     buf+=len; size-=len;
     ret_len += len;
-    len = snprintf(buf, size, "source ip\n");
+    len = snprintf(buf, size, "source ip positive\n");
     buf+=len; size-=len;
     ret_len += len;
-    for(struct ip_mask *tmp = c->ipmask_saddr->next; tmp != NULL; tmp = tmp->next){
+    for(struct ip_mask *tmp = c->ipmask_saddr_root->positive_tree->next; tmp != NULL; tmp = tmp->next){
       char ipstr[16];
       iptostr(tmp->addr, ipstr);
       len = snprintf(buf, size, "ipaddr: %s\t", ipstr);
@@ -92,14 +99,29 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       ret_len += len;
     }
 
+    len = snprintf(buf, size, "source ip denial\n");
+    buf+=len; size-=len;
+    ret_len += len;
+    for(struct ip_mask *tmp = c->ipmask_saddr_root->denial_tree->next; tmp != NULL; tmp = tmp->next){
+      char ipstr[16];
+      iptostr(tmp->addr, ipstr);
+      len = snprintf(buf, size, "ipaddr: %s\t", ipstr);
+      buf+=len; size-=len;
+      ret_len += len;
+      iptostr(tmp->mask, ipstr);
+      len = snprintf(buf, size, "mask: %s\n", ipstr);
+      buf+=len; size-=len;
+      ret_len += len;
+    }
+ 
     len = snprintf(buf, size, "\n");
     buf+=len; size-=len;
     ret_len += len;
 
-    len = snprintf(buf, size, "dest ip\n");
+    len = snprintf(buf, size, "dest ip positive\n");
     buf+=len; size-=len;
     ret_len += len;
-    for(struct ip_mask *tmp = c->ipmask_daddr->next; tmp != NULL; tmp = tmp->next){
+    for(struct ip_mask *tmp = c->ipmask_daddr_root->positive_tree->next; tmp != NULL; tmp = tmp->next){
       char ipstr[16];
       iptostr(tmp->addr, ipstr);
       len = snprintf(buf, size, "ipaddr: %s\t", ipstr);
@@ -114,6 +136,23 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
     buf+=len; size-=len;
     ret_len += len;
 
+    len = snprintf(buf, size, "dest ip denial\n");
+    buf+=len; size-=len;
+    ret_len += len;
+    for(struct ip_mask *tmp = c->ipmask_daddr_root->denial_tree->next; tmp != NULL; tmp = tmp->next){
+      char ipstr[16];
+      iptostr(tmp->addr, ipstr);
+      len = snprintf(buf, size, "ipaddr: %s\t", ipstr);
+      buf+=len; size-=len;
+      ret_len += len;
+      iptostr(tmp->mask, ipstr);
+      len = snprintf(buf, size, "mask: %s\n", ipstr);
+      buf+=len; size-=len;
+      ret_len += len;
+    }
+    len = snprintf(buf, size, "\n");
+    buf+=len; size-=len;
+    ret_len += len;
 
     len = snprintf(buf, size, "sport\n");
     buf+=len; size-=len;
@@ -125,17 +164,61 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       buf+=len; size-=len;
       ret_len += len;
     }
-    for(struct ports *tmp = tree->positive_tree->next; tmp!=NULL; tmp=tmp->next){
-      len = snprintf(buf, size, "lower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+    else{
+      struct ports *tmp;
+      len = snprintf(buf, size, "\tpositive\n");
       buf+=len; size-=len;
       ret_len += len;
+      for(struct ports *tmp = tree->positive_tree->next; tmp!=NULL; tmp=tmp->next){
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        buf+=len; size-=len;
+        ret_len += len;
+      }
+      len = snprintf(buf, size, "\tdenial\n");
+      buf+=len; size-=len;
+      ret_len += len;
+      for(struct ports *tmp = tree->denial_tree->next; tmp!=NULL; tmp=tmp->next){
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        buf+=len; size-=len;
+        ret_len += len;
+      }
     }
     len = snprintf(buf, size, "\n");
     buf+=len; size-=len;
     ret_len += len;
 
+    len = snprintf(buf, size, "dport\n");
+    buf+=len; size-=len;
+    ret_len += len;
 
-
+    tree = c->dport_tree;
+    if(tree->any_flag == 1){
+      len = snprintf(buf, size, "any\n");
+      buf+=len; size-=len;
+      ret_len += len;
+    }
+    else{
+      struct ports *tmp;
+      len = snprintf(buf, size, "\tpositive\n");
+      buf+=len; size-=len;
+      ret_len += len;
+      for(struct ports *tmp = tree->positive_tree->next; tmp!=NULL; tmp=tmp->next){
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        buf+=len; size-=len;
+        ret_len += len;
+      }
+      len = snprintf(buf, size, "\tdenial\n");
+      buf+=len; size-=len;
+      ret_len += len;
+      for(struct ports *tmp = tree->denial_tree->next; tmp!=NULL; tmp=tmp->next){
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        buf+=len; size-=len;
+        ret_len += len;
+      }
+    }
+    len = snprintf(buf, size, "\n");
+    buf+=len; size-=len;
+    ret_len += len;
 
 
  //   len = snprintf(buf,
@@ -264,6 +347,7 @@ void clear_cnxtbl(struct connection *cnxtbl){
 void update_cnxentry(struct connection *cnxtbl, struct connection *entry){}
 
 struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt){
+  printf("SEARCH CNXENTRY1\n");
   in_addr_t saddr = pkt->iphdr->saddr;
   in_addr_t daddr = pkt->iphdr->daddr; 
   u_int8_t proto  = pkt->iphdr->protocol;
@@ -287,57 +371,37 @@ struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt
   }
                     
   struct connection *c;
-  for(c=cnxtbl->next;c;c=c->next){
-//    test
-//    if((saddr == c->saddr || c->saddr == 0) &&
-//       (daddr == c->daddr || c->daddr == 0) &&
-//       (proto == c->proto || c->proto == 0) &&
-//      ((sport == c->sport || c->sport == 0) ||
-//       (dport == c->dport || c->dport == 0)
-//      )
-//    if(((saddr&c->saddr_mask) == (c->saddr&c->saddr_mask) || c->saddr == 0) &&
-//       ((daddr&c->daddr_mask) == (c->daddr&c->daddr_mask) || c->daddr == 0) &&
-//       (proto == c->proto || c->proto == 0) &&
-//      ((sport == c->sport || c->sport == 0) ||
-//       (dport == c->dport || c->dport == 0)
-//      )
-//      ){
-//        copy_operation(&pkt->op, &c->op);
-//        return c;
-//    }
-//    if((saddr&c->saddr_mask) != (c->saddr&c->saddr_mask))
-//      continue;
-//    if((daddr&c->daddr_mask) != (c->daddr&c->daddr_mask)) 
-//      continue;
-//    if(proto == c->proto || c->proto == 0)
-//      continue;
-//    if((sport == c->sport || c->sport == 0) || (dport == c->dport || c->dport == 0))
-//      continue;
+  printf("SEARCH CNXENTRY2\n");
+  int a = 0;
+  for(c=cnxtbl->next;c!=NULL;c=c->next){
+    printf("LOOP COUNT:%d\n", a);
+    a++;
     struct ip_mask *sipcheck, *dipcheck;
-    sipcheck = search_ipmask(saddr, c->ipmask_saddr);
+    sipcheck = search_ipmask(saddr, c->ipmask_saddr_root->denial_tree);
+    if(sipcheck != NULL){
+      continue;
+    }
+    sipcheck = search_ipmask(saddr, c->ipmask_saddr_root->positive_tree);
     if(sipcheck == NULL){
       continue;
     }
-    dipcheck = search_ipmask(saddr, c->ipmask_daddr);
+    dipcheck = search_ipmask(daddr, c->ipmask_daddr_root->denial_tree);
+    if(dipcheck != NULL){
+      continue;
+    }
+    dipcheck = search_ipmask(daddr, c->ipmask_daddr_root->positive_tree);
     if(dipcheck == NULL){
       continue;
     }
-    if(search_port_tree(sport, c->sport_tree) == 0){
+    if(!(pkt->icmphdr) && search_port_tree(sport, c->sport_tree) == 0){
       continue;
     } 
-    if(search_port_tree(dport, c->dport_tree) == 0){
+    if(!(pkt->icmphdr) && search_port_tree(dport, c->dport_tree) == 0){
       continue;
     } 
-
-    if(proto == c->proto || c->proto == 252){
+    if(proto != c->proto || c->proto == 252){
       continue;
     } 
-//    if(sipcheck == NULL &&
-//       dipcheck == NULL &&
-//       search_port_tree(dport, c->dport_tree) == 0 
-//      ){
-//        continue;
-//      }
     copy_operation(&pkt->op, &c->op);
     return c;
   }
@@ -503,7 +567,7 @@ void print_saved_pkt_queue(struct connection *cnx){
   }
 }
 
-struct connection *make_cnxentry(in_addr_t saddr, in_addr_t daddr, u_int8_t proto, struct port_tree *sport_tree, struct port_tree *dport_tree, struct ip_mask *saddr_mask, struct ip_mask *daddr_mask, int saddr_any_flag, int daddr_any_flag){
+struct connection *make_cnxentry(in_addr_t saddr, in_addr_t daddr, u_int8_t proto, struct port_tree *sport_tree, struct port_tree *dport_tree, struct ipmask_root *saddr_mask, struct ipmask_root *daddr_mask){
   struct connection *entry = malloc_cnxentry();
   entry->saddr = saddr;
   entry->daddr = daddr;
@@ -512,10 +576,8 @@ struct connection *make_cnxentry(in_addr_t saddr, in_addr_t daddr, u_int8_t prot
 //  entry->dport = dport;
   entry->sport_tree = sport_tree;
   entry->dport_tree = dport_tree;
-  entry->ipmask_saddr = saddr_mask;
-  entry->ipmask_daddr = daddr_mask;
-  entry->saddr_any_flag = saddr_any_flag;
-  entry->daddr_any_flag = daddr_any_flag;
+  entry->ipmask_saddr_root = saddr_mask;
+  entry->ipmask_daddr_root = daddr_mask;
   entry->next = NULL;
   return entry;
 }
@@ -523,27 +585,61 @@ struct connection *make_cnxentry(in_addr_t saddr, in_addr_t daddr, u_int8_t prot
 int make_cnx(struct connection *cnxtbl, struct packet *pkt){
   struct connection *find;
   if(!(find = search_cnxentry(cnxtbl, pkt))){
-    struct connection *entry = malloc_cnxentry();
-    entry->saddr = pkt->iphdr->saddr;
-    entry->daddr = pkt->iphdr->daddr;
-    entry->proto = pkt->iphdr->protocol;
-
+//    struct connection *entry = malloc_cnxentry();
+//    entry->saddr = pkt->iphdr->saddr;
+//    entry->daddr = pkt->iphdr->daddr;
+//    entry->proto = pkt->iphdr->protocol;
+//
+    u_int16_t sport, dport;
     if(pkt->icmphdr){
-      entry->sport = 0;
-      entry->dport = 0;
+      sport = 0;
+      dport = 0;
     }
     else if(pkt->tcphdr){
-      entry->sport = pkt->tcphdr->source;
-      entry->dport = pkt->tcphdr->dest;
+      sport = pkt->tcphdr->source;
+      dport = pkt->tcphdr->dest;
     }
     else if(pkt->udphdr){
-      entry->sport = pkt->udphdr->source;
-      entry->dport = pkt->udphdr->dest;
+      sport = pkt->udphdr->source;
+      dport = pkt->udphdr->dest;
     }
     else{
-      entry->sport = 0;
-      entry->dport = 0;
+      sport = 0;
+      dport = 0;
     }
+    struct connection *entry;
+
+    struct ip_mask *saddr_mask, *daddr_mask;
+    saddr_mask = malloc(sizeof(struct ip_mask));
+    daddr_mask = malloc(sizeof(struct ip_mask));
+    init_ipmask(saddr_mask);
+    init_ipmask(daddr_mask);
+
+    struct ipmask_root *saddr_mask_root, *daddr_mask_root;
+    saddr_mask_root = malloc(sizeof(struct ipmask_root));
+    daddr_mask_root = malloc(sizeof(struct ipmask_root));
+    init_ipmask_tree(saddr_mask_root);
+    init_ipmask_tree(daddr_mask_root);
+
+    char ipstr[16];
+    iptostr(pkt->iphdr->saddr, ipstr);
+    saddr_mask_root = array_ip_parse(ipstr);
+    iptostr(pkt->iphdr->daddr, ipstr);
+    daddr_mask_root = array_ip_parse(ipstr);
+
+    struct port_tree *sport_tree, *dport_tree;
+    sport_tree = malloc(sizeof(struct port_tree));
+    dport_tree = malloc(sizeof(struct port_tree));
+    init_port_tree(sport_tree);
+    init_port_tree(dport_tree);
+    char str[10]; 
+    sprintf(str,"%d", sport);
+    sport_tree = array_port_parse(str);
+    sprintf(str,"%d", dport);
+    dport_tree = array_port_parse(str);
+
+    entry = make_cnxentry(pkt->iphdr->saddr, pkt->iphdr->daddr, pkt->iphdr->protocol, sport_tree, dport_tree, saddr_mask_root, daddr_mask_root);
+
     add_cnxentry(cnxtbl, entry);
     return 1;
     /*for test*/
@@ -551,7 +647,6 @@ int make_cnx(struct connection *cnxtbl, struct packet *pkt){
 //    set_loss(cnxtbl, tid, tloss);
 //    set_modify(cnxtbl, 1, tbefore, tblen, tafter, talen);
 //    set_modify(cnxtbl, tid, tbefore, tblen, tafter, talen);
-
   }
   return 0;
 }
@@ -599,6 +694,8 @@ int make_cnx(struct connection *cnxtbl, struct packet *pkt){
 
 void init_ports(struct ports *port_tree){
     port_tree->next = NULL;
+    port_tree->lower_port = -1;
+    port_tree->higher_port = -1;
     return;
 }
 
@@ -631,9 +728,8 @@ void print_port(struct port_tree *port_tree){
 int string_to_port(char* port_str, u_int16_t *lower_port, u_int16_t *higher_port){
   char *colon;
   char *bikkuri = strchr(port_str, '!');
-
   int return_flag = 0;
-  if(port_str != NULL){
+  if(bikkuri != NULL){
     port_str += 1;
     return_flag = 1;
   }
@@ -641,31 +737,29 @@ int string_to_port(char* port_str, u_int16_t *lower_port, u_int16_t *higher_port
   if(colon == NULL){
     *lower_port = atoi(port_str);
     *higher_port = atoi(port_str);
-    return return_flag;
   }
   else if(port_str == colon){
     *lower_port = 0;
     *higher_port = atoi(colon+1);
-    return return_flag;
   }
   else if(*(colon+1) == ':' || *(colon+1) == ']' || *(colon+1) == '\0'){
     *colon = '\0';
     *lower_port = atoi(port_str);
     *higher_port = 65534;
-    return return_flag;
   }
   else{
     *colon = '\0';
     *lower_port = atoi(port_str);
     *higher_port = atoi(colon+1);
-    return return_flag;
   }
+    return return_flag;
 }
 
 int search_port_tree(u_int16_t port, struct port_tree *port_tree){
     struct ports *tmp;
-    if(port_tree->any_flag == 1)
+    if(port_tree->any_flag == 1){
         return 1;
+    }
     for(tmp=port_tree->denial_tree->next; tmp!=NULL; tmp=tmp->next){
         if(tmp->lower_port == port && port == tmp->higher_port){
             return 0;
@@ -699,8 +793,10 @@ void init_port_tree(struct port_tree *port_tree){
     port_tree->positive_tree = malloc(sizeof(struct ports));
     port_tree->denial_tree = malloc(sizeof(struct ports));
     port_tree->any_flag = 0;
-    port_tree->positive_tree = NULL;
-    port_tree->denial_tree = NULL;
+//    port_tree->positive_tree = NULL;
+//    port_tree->denial_tree = NULL;
+    init_ports(port_tree->positive_tree);
+    init_ports(port_tree->denial_tree);
 }
 
 struct port_tree *array_port_parse(char *arr){
@@ -708,10 +804,11 @@ struct port_tree *array_port_parse(char *arr){
     port_tree = malloc(sizeof(struct port_tree));
 
     struct ports *positive_tree; 
-    positive_tree = malloc(sizeof(struct ports));
-    init_ports(positive_tree);
     struct ports *denial_tree; 
+    positive_tree = malloc(sizeof(struct ports));
     denial_tree = malloc(sizeof(struct ports));
+    init_ports(positive_tree);
+    init_ports(denial_tree);
     port_tree->positive_tree = positive_tree;
     port_tree->denial_tree = denial_tree;
 
@@ -732,7 +829,7 @@ struct port_tree *array_port_parse(char *arr){
             node = malloc(sizeof(struct ports));
             init_ports(node);
             flag = string_to_port(comma, &node->lower_port, &node->higher_port);
-            if(flag == 0){
+            if(flag != 0){
                 add_port_tree(positive_tree, node);
             }
             else{
@@ -750,9 +847,170 @@ struct port_tree *array_port_parse(char *arr){
         if(flag == 0){
             add_port_tree(positive_tree, node);
         }
-        else{
+        else if(flag == 1){
             add_port_tree(denial_tree, node);
         }
     }
+    port_tree->positive_tree = positive_tree;
+    port_tree->denial_tree = denial_tree;
     return port_tree;
+}
+
+void init_ipmask(struct ip_mask *ip_mask){
+    ip_mask->addr = 0;
+    ip_mask->mask = 0;
+    ip_mask->next = NULL;
+    return ;
+}
+
+void add_ipmask(struct ip_mask *ip_mask, struct ip_mask *node){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask; tmp->next != NULL; tmp = tmp->next){}
+    tmp->next = node; 
+}
+
+void print_ipmask(struct ip_mask *ip_mask){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask->next; tmp != NULL; tmp = tmp->next){
+        printf("ip  : ");
+        print_ip(tmp->addr);
+        printf("mask: ");
+        print_ip(tmp->mask);
+    }
+}
+
+
+
+int string_to_ipmask(char *ipmask, in_addr_t *ip, in_addr_t *mask){
+	char *slash;
+  char *bikkuri = strchr(ipmask, '!');
+  if(bikkuri != NULL){
+    printf("%s\n", bikkuri);
+  }
+  int return_flag = 0;
+  if(bikkuri != NULL){
+    ipmask += 1;
+    return_flag = 1;
+  }
+	
+	slash = strchr(ipmask, '/');
+    if(slash == NULL){
+        *ip = inet_addr(ipmask);
+        *mask = 4294967295;
+        return return_flag;
+    }
+    else{
+	    char *dot;
+	    dot = strchr(slash+1, '.');
+        *slash = '\0';
+        if(dot == NULL){
+            // CIDR
+            *ip  = inet_addr(ipmask);
+            int cidr = atoi(slash+1);
+            switch(cidr%8){
+            case(1):
+                *mask = 128;
+                break;
+            case(2):
+                *mask = 192;
+                break;
+            case(3):
+                *mask = 224;
+                break;
+            case(4):
+                *mask = 240;
+                break;
+            case(5):
+                *mask = 248;
+                break;
+            case(6):
+                *mask = 252;
+                break;
+            case(7):
+                *mask = 254;
+                break;
+            }
+
+            *mask = *mask << 8;
+            for(int i=1; 8*i<=cidr; i++){
+                if(i!=1) *mask = *mask << 8;
+                *mask += 255;
+            }
+            return return_flag;
+        }
+        else{
+            // 255.255.255.0
+            *ip = inet_addr(ipmask);
+            *mask = inet_addr(slash+1);
+            in_addr_t test;
+            test = inet_addr(slash+1);
+        }
+        return return_flag;
+    }
+}
+
+struct ipmask_root *array_ip_parse(char *arr){
+    struct ipmask_root *addr_mask_root;
+    addr_mask_root = malloc(sizeof(struct ipmask_root));
+    init_ipmask_tree(addr_mask_root);
+
+    struct ip_mask *ip_mask; 
+    struct ip_mask *denial_ip_mask; 
+    ip_mask = malloc(sizeof(struct ip_mask));
+    denial_ip_mask = malloc(sizeof(struct ip_mask));
+    init_ipmask(ip_mask);
+    init_ipmask(denial_ip_mask);
+	  char *open_braket, *close_braket;
+    open_braket = strchr(arr, '[');
+    close_braket = strchr(arr, ']');
+    if(open_braket!=NULL){
+        *close_braket = '\0';
+        char *wordfirst = open_braket+1;
+        char *comma = strtok(wordfirst, ",");
+        while(1){
+            in_addr_t ip;
+            int mask;
+            if(comma == NULL) break;
+            struct ip_mask *node; 
+            node = malloc(sizeof(struct ip_mask));
+            init_ipmask(node);
+            int return_flag = string_to_ipmask(comma, &node->addr, &node->mask);
+            if(return_flag == 0)
+              add_ipmask(denial_ip_mask, node);
+            else if(return_flag == 1)
+              add_ipmask(ip_mask, node);
+            comma = strtok(NULL, ",");
+        }
+    }
+    else{
+        struct ip_mask *node; 
+        node = malloc(sizeof(struct ip_mask));
+        init_ipmask(node);
+        int return_flag = string_to_ipmask(arr, &node->addr, &node->mask);
+        if(return_flag == 1)
+          add_ipmask(denial_ip_mask, node);
+        else if(return_flag == 0)
+          add_ipmask(ip_mask, node);
+    }
+    addr_mask_root->positive_tree = ip_mask;
+    addr_mask_root->denial_tree = denial_ip_mask;
+    return addr_mask_root;
+}
+
+struct ip_mask *search_ipmask(in_addr_t addr, struct ip_mask *ip_mask){
+    struct ip_mask *tmp;
+    for(tmp = ip_mask->next; tmp!=NULL; tmp=tmp->next){
+        if((addr&tmp->mask) == (tmp->addr&tmp->mask)){
+            return tmp;
+        }
+    }
+    return NULL;
+}
+
+void init_ipmask_tree(struct ipmask_root *ip_mask_tree){
+  ip_mask_tree->positive_tree = malloc(sizeof(struct ip_mask)); 
+  ip_mask_tree->denial_tree = malloc(sizeof(struct ip_mask)); 
+  init_ipmask(ip_mask_tree->positive_tree);
+  init_ipmask(ip_mask_tree->denial_tree);
+  ip_mask_tree->any_flag = -1;
 }

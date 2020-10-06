@@ -75,12 +75,18 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
   else if(strcmp(flag, "generate") == 0){ printf("Generate Connection Entry\n");
   //saddr setting
     in_addr_t saddr;
-    struct ip_mask *saddr_mask;
-    struct ip_mask *daddr_mask;
+    struct ip_mask *saddr_mask, *daddr_mask;
+    struct ipmask_root *saddr_mask_root, *daddr_mask_root;
+
     saddr_mask = malloc(sizeof(struct ip_mask));
     daddr_mask = malloc(sizeof(struct ip_mask));
+    saddr_mask_root = malloc(sizeof(struct ipmask_root));
+    daddr_mask_root = malloc(sizeof(struct ipmask_root));
+
     init_ipmask(saddr_mask);
     init_ipmask(daddr_mask);
+    init_ipmask_tree(saddr_mask_root);
+    init_ipmask_tree(daddr_mask_root);
 
     struct port_tree *sport_tree;
     struct port_tree *dport_tree;
@@ -98,21 +104,21 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
     print_port(sport_tree);
     print_port(dport_tree);
 
-    int saddr_any_flag = 0;
+
     if(strcmp(saddr_char, "any") == 0 ){
-      saddr_any_flag = 1;
+      saddr_mask_root->any_flag = 1;
     }
     else{
-      saddr_mask = array_ip_parse(saddr_char);
+      saddr_mask_root = array_ip_parse(saddr_char);
     }
   //daddr setting
     in_addr_t daddr;
     int daddr_any_flag = 0;
     if(strcmp(daddr_char, "any") == 0 ){
-      daddr_any_flag = 1;
+      daddr_mask_root->any_flag = 1;
     }
     else{
-      daddr_mask = array_ip_parse(daddr_char);
+      daddr_mask_root = array_ip_parse(daddr_char);
     }
     u_int8_t proto = 0;
     if(strcmp(protonm, "TCP") == 0) proto = IPPROTO_TCP;
@@ -123,7 +129,7 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
 //    u_int16_t dport = htons(atoi(strtok(NULL, " ")));
     struct connection *find;
 //    if(!(find = generate_cnxentry(cnxtbl, saddr, daddr, proto, sport_tree, dport_tree, saddr_mask, daddr_mask, saddr_any_flag, daddr_any_flag))){
-      struct connection *entry = make_cnxentry(saddr, daddr, proto, sport_tree, dport_tree, saddr_mask, daddr_mask, saddr_any_flag, daddr_any_flag);
+      struct connection *entry = make_cnxentry(saddr, daddr, proto, sport_tree, dport_tree, saddr_mask_root, daddr_mask_root);
       add_cnxentry(cnxtbl, entry);
 //    }
   }
@@ -447,128 +453,3 @@ void init_pass(void *arg){
   pass->code=0;
 }
 
-void init_ipmask(struct ip_mask *ip_mask){
-    ip_mask->addr = 0;
-    ip_mask->mask = 0;
-    ip_mask->next = NULL;
-    return ;
-}
-
-void add_ipmask(struct ip_mask *ip_mask, struct ip_mask *node){
-    struct ip_mask *tmp;
-    for(tmp = ip_mask; tmp->next != NULL; tmp = tmp->next){}
-    tmp->next = node; 
-}
-
-void print_ipmask(struct ip_mask *ip_mask){
-    struct ip_mask *tmp;
-    for(tmp = ip_mask->next; tmp != NULL; tmp = tmp->next){
-        printf("ip  : ");
-        print_ip(tmp->addr);
-        printf("mask: ");
-        print_ip(tmp->mask);
-    }
-}
-
-
-
-void string_to_ipmask(char *ipmask, in_addr_t *ip, in_addr_t *mask){
-	char *slash;
-	slash = strchr(ipmask, '/');
-    if(slash == NULL){
-        *ip = inet_addr(ipmask);
-        *mask = 4294967295;
-        return;
-    }
-    else{
-	    char *dot;
-	    dot = strchr(slash+1, '.');
-        *slash = '\0';
-        if(dot == NULL){
-            // CIDR
-            *ip  = inet_addr(ipmask);
-            int cidr = atoi(slash+1);
-            switch(cidr%8){
-            case(1):
-                *mask = 128;
-                break;
-            case(2):
-                *mask = 192;
-                break;
-            case(3):
-                *mask = 224;
-                break;
-            case(4):
-                *mask = 240;
-                break;
-            case(5):
-                *mask = 248;
-                break;
-            case(6):
-                *mask = 252;
-                break;
-            case(7):
-                *mask = 254;
-                break;
-            }
-
-            *mask = *mask << 8;
-            for(int i=1; 8*i<=cidr; i++){
-                if(i!=1) *mask = *mask << 8;
-                *mask += 255;
-            }
-            return;
-        }
-        else{
-            // 255.255.255.0
-            *ip = inet_addr(ipmask);
-            *mask = inet_addr(slash+1);
-            in_addr_t test;
-            test = inet_addr(slash+1);
-        }
-        return ;
-    }
-}
-
-struct ip_mask *array_ip_parse(char *arr){
-    struct ip_mask *ip_mask; 
-    ip_mask = malloc(sizeof(struct ip_mask));
-    init_ipmask(ip_mask);
-	  char *open_braket, *close_braket;
-    open_braket = strchr(arr, '[');
-    close_braket = strchr(arr, ']');
-    if(open_braket!=NULL){
-        *close_braket = '\0';
-        char *wordfirst = open_braket+1;
-        char *comma = strtok(wordfirst, ",");
-        while(1){
-            in_addr_t ip;
-            int mask;
-            if(comma == NULL) break;
-            struct ip_mask *node; 
-            node = malloc(sizeof(struct ip_mask));
-            init_ipmask(node);
-            string_to_ipmask(comma, &node->addr, &node->mask);
-            add_ipmask(ip_mask, node);
-            comma = strtok(NULL, ",");
-        }
-    }
-    else{
-        struct ip_mask *node; 
-        node = malloc(sizeof(struct ip_mask));
-        init_ipmask(node);
-        string_to_ipmask(arr, &node->addr, &node->mask);
-        add_ipmask(ip_mask, node);
-    }
-    return ip_mask;
-}
-
-struct ip_mask *search_ipmask(in_addr_t saddr, struct ip_mask *ip_mask){
-    struct ip_mask *tmp;
-    for(tmp = ip_mask->next; tmp!=NULL; tmp=tmp->next){
-        if((saddr&tmp->mask) == (tmp->addr&tmp->mask)){
-            return tmp;
-        }
-    }
-    return NULL;
-}

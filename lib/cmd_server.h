@@ -46,9 +46,3 @@ typedef struct{
 void *cmd_loop(void *arg);
 void proc_cmd(int csk, char *cmd, struct connection *cnxtbl);
 void init_pass(void *arg);
-void string_to_ipmask(char *ipmask, in_addr_t *ip, in_addr_t *mask);
-struct ip_mask *array_ip_parse(char *arr);
-void print_ipmask(struct ip_mask *ip_mask);
-void add_ipmask(struct ip_mask *ip_mask, struct ip_mask *node);
-void init_ipmask(struct ip_mask *ip_mask);
-struct ip_mask *search_ipmask(in_addr_t saddr, struct ip_mask *ip_mask);

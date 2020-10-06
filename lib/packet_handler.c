@@ -135,7 +135,6 @@ void *recv_loop(void *arg){
     }
 
     if(pkt->icmphdr){
-      //printf("ICMP RECV\n");
       struct connection *conn;
       if((conn = search_cnxentry(iface->cnxtbl, pkt))){
         copy_operation(&pkt->op, &conn->op);
