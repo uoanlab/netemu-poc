@@ -22,4 +22,3 @@ int loss_pkt(struct packet *pkt){
   }
   return 0;
 }
-

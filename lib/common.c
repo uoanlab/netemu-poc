@@ -55,3 +55,11 @@ int get_random(int min,int max)
 	}
 	return min + (int)(rand()*(max-min+1.0)/(1.0+RAND_MAX));
 }
+
+void print_op(struct operation *op){
+  printf("==OPERSTION==\n");
+  printf("op->delay : %d\n", op->delay);
+  printf("op->loss  : %d\n", op->loss);
+  printf("\n");
+  return;
+}

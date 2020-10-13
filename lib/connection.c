@@ -12,6 +12,7 @@
 #include"packet.h"
 #include"cmd_server.h"
 #include"connection.h"
+#include"loss.h"
 
 struct connection *free_cnxentry_queue = NULL;
 
@@ -170,7 +171,7 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       buf+=len; size-=len;
       ret_len += len;
       for(struct ports *tmp = tree->positive_tree->next; tmp!=NULL; tmp=tmp->next){
-        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", ntohs(tmp->lower_port), ntohs(tmp->higher_port));
         buf+=len; size-=len;
         ret_len += len;
       }
@@ -178,7 +179,7 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       buf+=len; size-=len;
       ret_len += len;
       for(struct ports *tmp = tree->denial_tree->next; tmp!=NULL; tmp=tmp->next){
-        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", ntohs(tmp->lower_port), ntohs(tmp->higher_port));
         buf+=len; size-=len;
         ret_len += len;
       }
@@ -203,7 +204,7 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       buf+=len; size-=len;
       ret_len += len;
       for(struct ports *tmp = tree->positive_tree->next; tmp!=NULL; tmp=tmp->next){
-        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", ntohs(tmp->lower_port), ntohs(tmp->higher_port));
         buf+=len; size-=len;
         ret_len += len;
       }
@@ -211,7 +212,7 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
       buf+=len; size-=len;
       ret_len += len;
       for(struct ports *tmp = tree->denial_tree->next; tmp!=NULL; tmp=tmp->next){
-        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", tmp->lower_port, tmp->higher_port);
+        len = snprintf(buf, size, "\t\tlower:%d\thigher:%d\n", ntohs(tmp->lower_port), ntohs(tmp->higher_port));
         buf+=len; size-=len;
         ret_len += len;
       }
@@ -347,7 +348,7 @@ void clear_cnxtbl(struct connection *cnxtbl){
 void update_cnxentry(struct connection *cnxtbl, struct connection *entry){}
 
 struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt){
-  printf("SEARCH CNXENTRY1\n");
+  struct connection *return_cnx = NULL;
   in_addr_t saddr = pkt->iphdr->saddr;
   in_addr_t daddr = pkt->iphdr->daddr; 
   u_int8_t proto  = pkt->iphdr->protocol;
@@ -371,10 +372,8 @@ struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt
   }
                     
   struct connection *c;
-  printf("SEARCH CNXENTRY2\n");
   int a = 0;
   for(c=cnxtbl->next;c!=NULL;c=c->next){
-    printf("LOOP COUNT:%d\n", a);
     a++;
     struct ip_mask *sipcheck, *dipcheck;
     sipcheck = search_ipmask(saddr, c->ipmask_saddr_root->denial_tree);
@@ -402,11 +401,13 @@ struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt
     if(proto != c->proto || c->proto == 252){
       continue;
     } 
-    copy_operation(&pkt->op, &c->op);
-    return c;
+//    copy_operation(&pkt->op, &c->op);
+    exec_operation(pkt, c);
+    return_cnx = c;
   }
-  return NULL;
+  return return_cnx;
 }
+
 int set_all(struct connection *cnxtbl, int id, int loss, int delay, char *before, int blen, char *after, int alen){
   struct connection *c;
   for(c=cnxtbl->next;c;c=c->next){
@@ -584,7 +585,7 @@ struct connection *make_cnxentry(in_addr_t saddr, in_addr_t daddr, u_int8_t prot
 
 int make_cnx(struct connection *cnxtbl, struct packet *pkt){
   struct connection *find;
-  if(!(find = search_cnxentry(cnxtbl, pkt))){
+  if(!(find = search_cnxentry_no_exec(cnxtbl, pkt))){
 //    struct connection *entry = malloc_cnxentry();
 //    entry->saddr = pkt->iphdr->saddr;
 //    entry->daddr = pkt->iphdr->daddr;
@@ -1013,4 +1014,81 @@ void init_ipmask_tree(struct ipmask_root *ip_mask_tree){
   init_ipmask(ip_mask_tree->positive_tree);
   init_ipmask(ip_mask_tree->denial_tree);
   ip_mask_tree->any_flag = -1;
+}
+
+//lossした場合return 1
+//それ以外    return 0
+int exec_operation(struct packet *pkt, struct connection *conn){
+  if(conn->op.delay >= 0){
+    pkt->op.delay += conn->op.delay;
+  }
+  if(conn->op.loss >= 0){
+    pkt->op.loss = conn->op.loss;
+    int ret_value;
+    ret_value = loss_pkt(pkt);
+    if(ret_value == 1){
+      printf("LOSS PACKET IN EXEC_OPERATION\n");
+      return 1;
+    }
+  }
+  return 0;
+}
+
+struct connection *search_cnxentry_no_exec(struct connection *cnxtbl, struct packet *pkt){
+  struct connection *return_cnx = NULL;
+  in_addr_t saddr = pkt->iphdr->saddr;
+  in_addr_t daddr = pkt->iphdr->daddr; 
+  u_int8_t proto  = pkt->iphdr->protocol;
+  u_int16_t sport;
+  u_int16_t dport;
+  if(pkt->tcphdr){
+    sport = pkt->tcphdr->source;
+    dport = pkt->tcphdr->dest;
+  }
+  else if(pkt->udphdr){
+    sport = pkt->udphdr->source;
+    dport = pkt->udphdr->dest;
+  }
+  else if(pkt->icmphdr){
+    sport = 0;
+    dport = 0;
+  }
+  else{
+    sport = 0;
+    dport = 0; 
+  }
+                    
+  struct connection *c;
+  int a = 0;
+  for(c=cnxtbl->next;c!=NULL;c=c->next){
+    a++;
+    struct ip_mask *sipcheck, *dipcheck;
+    sipcheck = search_ipmask(saddr, c->ipmask_saddr_root->denial_tree);
+    if(sipcheck != NULL){
+      continue;
+    }
+    sipcheck = search_ipmask(saddr, c->ipmask_saddr_root->positive_tree);
+    if(sipcheck == NULL){
+      continue;
+    }
+    dipcheck = search_ipmask(daddr, c->ipmask_daddr_root->denial_tree);
+    if(dipcheck != NULL){
+      continue;
+    }
+    dipcheck = search_ipmask(daddr, c->ipmask_daddr_root->positive_tree);
+    if(dipcheck == NULL){
+      continue;
+    }
+    if(!(pkt->icmphdr) && search_port_tree(sport, c->sport_tree) == 0){
+      continue;
+    } 
+    if(!(pkt->icmphdr) && search_port_tree(dport, c->dport_tree) == 0){
+      continue;
+    } 
+    if(proto != c->proto || c->proto == 252){
+      continue;
+    } 
+    return_cnx = c;
+  }
+  return return_cnx;
 }

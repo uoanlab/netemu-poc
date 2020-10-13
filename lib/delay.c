@@ -25,6 +25,11 @@ void delay_enqueue(struct packet *queue, struct packet *pkt){
   for(temp=pkt; temp->next!=NULL; temp=temp->next){
     if(temp->timestamp.tv_sec >= pkt->timestamp.tv_sec){
       if(temp->timestamp.tv_usec >= pkt->timestamp.tv_usec+pkt->op.delay*1000){
+//          printf("DELAY ENQUEUE\n");
+//          print_pkt(pkt);
+          printf("pkt\n");
+          printf("%ld %06lu\n", pkt->timestamp.tv_sec, pkt->timestamp.tv_usec);
+          printf("\n");
           pkt->next = temp->next;
           temp->next = pkt;
           pthread_mutex_unlock(&mutex);
@@ -43,15 +48,23 @@ struct packet *delay_dequeue(struct packet *queue){
   struct packet *q;
   if(queue->next){
     pthread_mutex_lock(&mutex);
-    struct packet *pkt_last;
-    for(q=queue; q->next; q=q->next){
+    struct packet *pkt_last=queue;
+    for(q=queue->next; q->next; q=q->next){
       pkt_last = q;
     }
+    printf("q   :%p\n", q);
+    printf("last:%p\n", pkt_last);
     struct timeval now;
     gettimeofday(&now, NULL); 
 
-    if(now.tv_sec >= q->timestamp.tv_sec){
-      if(now.tv_usec >= q->timestamp.tv_usec+q->op.delay*1000-1000){
+    printf("now\n");
+    printf("%ld %06lu\n", now.tv_sec, now.tv_usec);
+    printf("pkt\n");
+    printf("%ld %06lu\n", q->timestamp.tv_sec, q->timestamp.tv_usec);
+    printf("%d %d\n", (q->op.delay/1000), (q->op.delay%1000)*1000);
+    printf("\n");
+    if(now.tv_sec >= q->timestamp.tv_sec+(q->op.delay/1000)){
+      if(now.tv_usec>=q->timestamp.tv_usec+(q->op.delay%1000)*1000 || now.tv_sec>q->timestamp.tv_sec+(q->op.delay/1000)){
         pkt_last->next = NULL;
         pthread_mutex_unlock(&mutex);
         return q;

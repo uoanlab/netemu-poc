@@ -70,7 +70,6 @@ void *recv_loop(void *arg){
     }
 
    if(sll.sll_pkttype == PACKET_OUTGOING){
-      printf("PACKET OUTGOING\n");
       free(pkt);
       continue;
     }
@@ -122,7 +121,6 @@ void *recv_loop(void *arg){
         request = malloc(sizeof(struct packet));
         init_pkt(request);
         make_arprequest(request, route->iface->macaddr, route->iface->ipaddr, pkt->iphdr->daddr);
-//        print_arptbl(iface->arptbl);
         enqueue(route->iface->queue, request);
         continue;
       }
@@ -137,7 +135,7 @@ void *recv_loop(void *arg){
     if(pkt->icmphdr){
       struct connection *conn;
       if((conn = search_cnxentry(iface->cnxtbl, pkt))){
-        copy_operation(&pkt->op, &conn->op);
+//        copy_operation(&pkt->op, &conn->op);
       }
     }
 
@@ -145,26 +143,27 @@ void *recv_loop(void *arg){
       //printf("TCP RECV\n");
       struct connection *conn;
       if((conn = search_cnxentry(iface->cnxtbl, pkt))){
-         //if(!chk_rtns(&conn->saved_pkt_queue, pkt)){
-         pkt->diff_seq = conn->diff_seq;
-         pkt->diff_ack = conn->diff_ack;
-         copy_operation(&pkt->op, &conn->op);
-         struct packet *copy = malloc_pkt();
-         copy_pkt(copy, pkt);
+//         //if(!chk_rtns(&conn->saved_pkt_queue, pkt)){
+//         pkt->diff_seq = conn->diff_seq;
+//         pkt->diff_ack = conn->diff_ack;
+//         copy_operation(&pkt->op, &conn->op);
+//         struct packet *copy = malloc_pkt();
+//         copy_pkt(copy, pkt);
 //          if(100 < count_pkt_in_queue(conn->saved_pkt_queue)) {
 //            free_pkt(dequeue(&conn->saved_pkt_queue));
-//   //test         print_saved_pkt_queue(conn);
+//        //test 
+//        //    print_saved_pkt_queue(conn);
 //          }
-        //}
-        pkt->tcphdr->seq     = htonl(ntohl(pkt->tcphdr->seq)    +pkt->diff_seq);
-        pkt->tcphdr->ack_seq = htonl(ntohl(pkt->tcphdr->ack_seq)-pkt->diff_ack);
-        pkt->tcphdr->check   = calc_tcp_cksum(pkt->iphdr, pkt->tcphdr);
+//        //}
+//        pkt->tcphdr->seq     = htonl(ntohl(pkt->tcphdr->seq)    +pkt->diff_seq);
+//        pkt->tcphdr->ack_seq = htonl(ntohl(pkt->tcphdr->ack_seq)-pkt->diff_ack);
+//        pkt->tcphdr->check   = calc_tcp_cksum(pkt->iphdr, pkt->tcphdr);
       }
     }
     else if(pkt->udphdr){
       struct connection *conn;
       if((conn = search_cnxentry(iface->cnxtbl, pkt))){
-        copy_operation(&pkt->op, &conn->op);
+//        copy_operation(&pkt->op, &conn->op);
       }
     }
     else{
@@ -366,7 +365,7 @@ void *delay_loop(void *arg){
 /*--------------------*/
   for(;;){
     for(pkt=delay_dequeue(iface->delay_queue); pkt; pkt=delay_dequeue(iface->delay_queue)){
-     if(send(iface->skfd, pkt->buf, pkt->size, 0) < 0){
+      if(send(iface->skfd, pkt->buf, pkt->size, 0) < 0){
         perror("SEND");
       }
       else{

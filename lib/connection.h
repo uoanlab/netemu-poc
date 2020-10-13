@@ -94,3 +94,5 @@ void add_ipmask(struct ip_mask *ip_mask, struct ip_mask *node);
 void init_ipmask(struct ip_mask *ip_mask);
 struct ip_mask *search_ipmask(in_addr_t saddr, struct ip_mask *ip_mask);
 void init_ipmask_tree(struct ipmask_root *ip_mask_tree);
+int exec_operation(struct packet *pkt, struct connection *conn);
+struct connection *search_cnxentry_no_exec(struct connection *cnxtbl, struct packet *pkt);

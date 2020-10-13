@@ -45,3 +45,4 @@ int copy_operation(struct operation *copy, struct operation *origin);
 void print_ip(in_addr_t ip);
 
 int get_random(int min,int max);
+void print_op(struct operation *op);
