@@ -1,0 +1,24 @@
+{
+  "scenario_name":"drone_disaster_search",
+  "condtion":{
+    "sip":"any",
+    "dip":"192.168.0.1/24",
+    "sport":"any",
+    "dport":"any",
+    "type":"any"
+  },
+  "rule":{
+    "loss":[
+        {"value":5, "loss_start_time":20},
+        {"value":5, "loss_start_time":30}
+      ],
+    "delay":[
+      {"value":100, "delay_start_time":10},
+      {"value":100, "delay_start_time":20},
+      {"value":100, "delay_start_time":30}
+    ],
+    "modify":[],
+    "insert":[]
+  }
+}
+
