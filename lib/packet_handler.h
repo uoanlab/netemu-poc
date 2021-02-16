@@ -9,3 +9,4 @@ void *delay_loop(void *arg);
 static u_int32_t xorshift();
 int loss_pkt(struct packet *pkt);
 int chk_rtns(struct packet **queue, struct packet *pkt);
+void modify_log_output(char *filename, struct timeval before, struct timeval after);

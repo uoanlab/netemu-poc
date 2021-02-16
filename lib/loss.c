@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -15,8 +16,8 @@
 #include "packet.h"
 
 int loss_pkt(struct packet *pkt){
-  int r = get_random(0, 100);
-  if(0 <= r && r < (pkt->op.loss)){
+  int r = get_random(0, 100*10000);
+  if(0 <= r && r < (pkt->op.loss)*10000){
     free_pkt(pkt);
     return 1;
   }

@@ -10,6 +10,7 @@
 #include "pcap.h"
 #include "connection.h"
 #include "cmd_server.h"
+#include "insert.h"
 
 void *cmd_loop(void  *arg){
   struct connection *cnxtbl = (struct connection *)arg;
@@ -61,7 +62,6 @@ void *cmd_loop(void  *arg){
 void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
   char *flag = strtok(cmd, " ");
   int len;
-  printf("DEBUG: cmd ->[%s]\n", flag);
   if(strcmp(flag, "print") == 0){
     printf("Print Connection Table\n");
     char result[60401];
@@ -128,10 +128,8 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
 //    u_int16_t sport = htons(atoi(strtok(NULL, " ")));
 //    u_int16_t dport = htons(atoi(strtok(NULL, " ")));
     struct connection *find;
-//    if(!(find = generate_cnxentry(cnxtbl, saddr, daddr, proto, sport_tree, dport_tree, saddr_mask, daddr_mask, saddr_any_flag, daddr_any_flag))){
       struct connection *entry = make_cnxentry(saddr, daddr, proto, sport_tree, dport_tree, saddr_mask_root, daddr_mask_root);
       add_cnxentry(cnxtbl, entry);
-//    }
   }
   else if(strcmp(flag, "delete") == 0){
     int id = atoi(strtok(NULL,  ""));
@@ -140,9 +138,9 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
   }
   else if(strcmp(flag, "setloss") == 0){
     int id   = atoi(strtok(NULL, " "));
-    int loss = atoi(strtok(NULL, " "));
+    double loss = atof(strtok(NULL, " "));
     int difftime = atoi(strtok(NULL, " "));
-    printf("%d: Set loss %d%% difftime:%d\n", id, loss, difftime);
+    printf("%d: Set loss %f%% difftime:%d\n", id, loss, difftime);
     set_loss(cnxtbl, id, loss, difftime);
   }
   else if(strcmp(flag, "unsetloss") == 0){
@@ -191,13 +189,10 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
     pass_insert pass;
     init_pass((void *)&pass);
     int id = atoi(strtok(NULL, " "));
-    pass.difftime=atoi(strtok(NULL, " "));
-    printf("difftime:%d\n",pass.difftime);
     char *pro = strtok(NULL, " ");
     if (strcmp(pro,"tcp")==0){
       while(1){
         char *opt = strtok(NULL, " ");
-//        printf("%s\n",opt);
         if(opt == NULL) break;
         if(strcmp(opt,"A")==0)      pass.ack    =1;
         else if(strcmp(opt,"F")==0) pass.fin    =1;
@@ -210,6 +205,7 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
         else if(strcmp(opt,"W")==0) pass.window =atoi(strtok(NULL, " "));
         else if(strcmp(opt,"O")==0) pass.off    =atoi(strtok(NULL, " "));
         else if(strcmp(opt,"Q")==0){}
+        else if(strcmp(opt,"y")==0) pass.difftime=atoi(strtok(NULL, " "));
         //check sumに合わせた型変換
         else if(strcmp(opt,"B")==0){
           int temp = atoi(strtok(NULL," "));
@@ -256,11 +252,9 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
         }
         else if(strcmp(opt,"pcap")==0){
           pass.pcap=1;
-          printf("pass.pcap:%d\n",pass.pcap);
         }
         else if(strcmp(opt,"pcapng")==0){
           pass.pcapng=1;
-          printf("pass.pcap:%d\n",pass.pcap);
         }
         else if(strcmp(opt,"j")==0){
           strcpy(pass.dstip,strtok(NULL, " "));
@@ -268,7 +262,7 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
         }
         else if(strcmp(opt,"J")==0) pass.dstrandom = 1;
       }
-//      insert_tcppkt(id, &pass);
+      insert_tcppkt(id, &pass, cnxtbl);
       count+=1;
     }
     else if (strcmp(pro,"udp")==0){
@@ -313,7 +307,6 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
         }
         else if(strcmp(opt,"pcap")==0){
           pass.pcap=1;
-          printf("pass.pcap:%d\n",pass.pcap);
         }
         else if(strcmp(opt,"pcapng")==0){
           pass.pcapng=1;
@@ -323,15 +316,11 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
           pass.dstipflag=1;
         }
         else if(strcmp(opt,"J")==0) pass.dstrandom = 1;
-//      char *data = strtok(NULL, " ");
-//      int dlen = strlen(data);
-//      int thread_size = atoi(strtok(NULL, " "));
-//      int dport = atoi(strtok(NULL, " "));
+        else if(strcmp(opt,"y")==0) pass.difftime=atoi(strtok(NULL, " "));
       }
-//      insert_udppkt(id,&pass);
+      insert_udppkt(id,&pass,cnxtbl);
     }
     else if (strcmp(pro,"icmp")==0){
-      printf("%d:insert icmp method start\n", id);
       while(1){
         char *opt = strtok(NULL, " ");
         if(opt == NULL) break;
@@ -413,18 +402,16 @@ void proc_cmd(int csk, char *cmd, struct connection *cnxtbl){
           pass.dstipflag=1;
         }
         else if(strcmp(opt,"J")==0) pass.dstrandom = 1;
-//      char *data = strtok(NULL, " ");
-//      int dlen = strlen(data);
-//      int thread_size = atoi(strtok(NULL, " "));
-//      int dport = atoi(strtok(NULL, " "));
+        else if(strcmp(opt,"y")==0) pass.difftime=atoi(strtok(NULL, " "));
       }
-//      insert_icmppkt(id,&pass);
+      insert_icmppkt(id,&pass,cnxtbl);
     }
   }
   else{
     printf("BAD INSTRUCTION\n");
   }
 }
+
 void init_pass(void *arg){
   pass_insert *pass;
   pass = arg;

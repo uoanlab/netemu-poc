@@ -70,22 +70,15 @@ void print_cnxtbl(struct connection *cnxtbl){
 int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
   int ret_len=0;
   int len;
-  // len = snprintf(buf,
-	//	 size,
-	//	 "=========================================== Connection  Table ==========================================\n" \
-	//	 "| id| source ipaddr |  dest ipaddr  |proto|sport|dport|                      flag                      |\n" \
-	//	 "--------------------------------------------------------------------------------------------------------\n");
- // buf+=len; size-=len;
- // ret_len += len;
-
- // char ipstr[16];
- // char ipstr2[16];
   struct connection *c;
   for(c=cnxtbl->next;(c && 0<(size/100)-1);c=c->next){
+    len = snprintf(buf, size, "===========================================\n");
+    buf+=len; size-=len;
+    ret_len += len;
     len = snprintf(buf, size, "%d:\n", c->id);
     buf+=len; size-=len;
     ret_len += len;
-    len = snprintf(buf, size, "source ip positive\n");
+    len = snprintf(buf, size, "sip psitive\n");
     buf+=len; size-=len;
     ret_len += len;
     for(struct ip_mask *tmp = c->ipmask_saddr_root->positive_tree->next; tmp != NULL; tmp = tmp->next){
@@ -222,49 +215,10 @@ int get_cnxtbl(struct connection *cnxtbl, char *buf, int size){
     ret_len += len;
 
 
- //   len = snprintf(buf,
-	//	   size,
-	//	   "|%3d|%15s|%15s|%5s|%5d|%5d",
-	//	   c->id,
-	//	   ((iptostr(c->saddr, ipstr), ipstr)),
-	//	   ((iptostr(c->daddr, ipstr2), ipstr2)),
-	//	   (c->proto == IPPROTO_TCP)  ? " TCP " :
-	//	   (c->proto == IPPROTO_UDP)  ? " UDP " :
-	//	   (c->proto == IPPROTO_ICMP) ? " ICMP" : "Other",
-	//	   ntohs(c->sport),
-	//	   ntohs(c->dport)
-	//	   );
- //   buf+=len; size-=len;
- //   ret_len += len;
- //   len = (c->op.loss) ?
- //     snprintf(buf, size, "| loss : %3d%%", c->op.loss) :
- //     snprintf(buf, size, "| loss : %4s", "x");
- //   buf+=len; size-=len;
- //   ret_len += len;
- //   len = (c->op.delay) ?
- //     sprintf(buf, "| delay : %6dms %3d%%", c->op.delay, c->op.delay_per) :
- //     sprintf(buf, "| delay : %8s", "x");
- //   buf+=len; size-=len;
- //   ret_len += len;
- //   len = (c->op.modify) ?
- //     sprintf(buf, "| modify :       o|\n") :
- //     sprintf(buf, "| modify :       x|\n");
- //   buf+=len; size-=len;
- //   ret_len += len;
- //   if(c->op.modify){
- //     len = snprintf(buf, size, "| %45s to %46s |\n", c->op.mset.before, c->op.mset.after);
- //     buf+=len; size-=len;
- //     ret_len += len;
- //   }
- //   if(c->proto == IPPROTO_TCP){
- //   len = snprintf(buf, size, "|   |       TCP flag|urg:%d ack:%d psh:%d rst:%d syn:%d fin:%d                                               |\n", c->op.headder.urg, c->op.headder.ack, c->op.headder.psh, c->op.headder.rst, c->op.headder.syn, c->op.headder.fin );
- //     buf+=len; size-=len;
- //     ret_len += len;
- //   }
   }
- // len = snprintf(buf, size, "========================================================================================================\n");
- // ret_len += len;
-//  print_saved_pkt_queue(cnxtbl);
+  len = snprintf(buf, size, "===========================================\n");
+  buf+=len; size-=len;
+  ret_len += len;
   return ret_len;
 }
 void init_cnxentry(struct connection *entry){
@@ -401,7 +355,6 @@ struct connection *search_cnxentry(struct connection *cnxtbl, struct packet *pkt
     if(proto != c->proto || c->proto == 252){
       continue;
     } 
-//    copy_operation(&pkt->op, &c->op);
     exec_operation(pkt, c);
     return_cnx = c;
   }
@@ -439,16 +392,13 @@ int unset_all(struct connection *cnxtbl, int id){
   }
   return 0;
 }
-int set_loss(struct connection *cnxtbl, int id, int loss, int difftime){
+int set_loss(struct connection *cnxtbl, int id, double loss, int difftime){
   struct connection *c;
-  printf("SET LOSS connection.c\n");
   for(c=cnxtbl->next;c;c=c->next){
     if(c->id == id){
       c->op.loss = loss;
       c->op.loss_start = time(NULL);
       c->op.loss_difftime = difftime;
-      printf("start loss id :%d\n",c->id);
-      printf("start loss :%d\n",c->op.loss);
       return 1;
     }
   }
@@ -464,7 +414,6 @@ int set_delay(struct connection *cnxtbl, int id, int delay, int delay_per, int d
       c->op.delay = delay;
       c->op.delay_per = delay_per;
       c->op.delay_start = time(NULL);
-      printf("start:%ld\n",c->op.delay_start);
       c->op.delay_difftime = difftime;
       return 1;
     }
@@ -487,7 +436,6 @@ int set_modify(struct connection *cnxtbl, int id, char *before, int blen, char *
       c->op.mset.alen = alen;
       memcpy(c->op.mset.after,  after,  alen);
       c->op.modify_start = time(NULL);
-      printf("start:%ld\n",c->op.modify_start);
       c->op.modify_difftime = difftime;
       return 1;
     }
@@ -518,7 +466,6 @@ int set_flag(struct connection *cnxtbl, int id, char *flag, int flen){
       if(memcmp("rst",flag,flen)==0)c->op.headder.rst=1;
       if(memcmp("syn",flag,flen)==0)c->op.headder.syn=1;
       if(memcmp("fin",flag,flen)==0)c->op.headder.fin=1;
-      printf("%d\n",c->op.headder.urg);
       return 1;
     }
   }
@@ -590,7 +537,6 @@ int make_cnx(struct connection *cnxtbl, struct packet *pkt){
 //    entry->saddr = pkt->iphdr->saddr;
 //    entry->daddr = pkt->iphdr->daddr;
 //    entry->proto = pkt->iphdr->protocol;
-//
     u_int16_t sport, dport;
     if(pkt->icmphdr){
       sport = 0;
@@ -651,47 +597,6 @@ int make_cnx(struct connection *cnxtbl, struct packet *pkt){
   }
   return 0;
 }
-
-//struct connection *generate_cnxentry(struct connection *cnxtbl ,in_addr_t saddr, in_addr_t daddr, u_int8_t proto, u_int16_t sport, u_int16_t dport, struct ip_mask *saddr_mask, struct ip_mask *daddr_mask, int saddr_any_flag, int daddr_any_flag){
-//  struct connection *c;
-//  for(c=cnxtbl->next;c;c=c->next){
-//    //if((saddr == c->saddr || c->saddr == 0) &&
-//    //   (daddr == c->daddr || c->daddr == 0) &&
-//    //   (proto == c->proto || c->proto == 0) &&
-//    //  ((sport == c->sport || c->sport == 0) ||
-//    //   (dport == c->dport || c->dport == 0)
-//    //  )
-//    //  ){
-//    // return c;
-//    //}
-//
-//    //if((saddr&c->saddr_mask) != (c->saddr&c->saddr_mask))
-//    //  continue;
-//    //if((daddr&c->daddr_mask) != (c->daddr&c->daddr_mask)) 
-//    //  continue;
-//    //if(proto == c->proto || c->proto == 0)
-//    //  continue;
-//    //if((sport == c->sport || c->sport == 0) || (dport == c->dport || c->dport == 0))
-//    //  continue;
-//
-//    struct ip_mask *tmp;
-//    tmp = search_ipmask(saddr, saddr_mask);
-//    if(tmp == NULL && c->saddr_any_flag != 1){
-//      continue;
-//    }
-//    tmp = search_ipmask(daddr, daddr_mask);
-//    if(tmp == NULL && c->daddr_any_flag != 1){
-//      continue;
-//    }
-//    if(search_port_tree(sport, c->sport_tree) == 0){
-//      continue;
-//    } 
-//    if(search_port_tree(dport, c->dport_tree) == 0){
-//      continue;
-//    } 
-//  }
-//  return NULL;
-//}
 
 void init_ports(struct ports *port_tree){
     port_tree->next = NULL;
@@ -1022,12 +927,11 @@ int exec_operation(struct packet *pkt, struct connection *conn){
   if(conn->op.delay >= 0){
     pkt->op.delay += conn->op.delay;
   }
-  if(conn->op.loss >= 0){
+  if(conn->op.loss != 0.000000){
     pkt->op.loss = conn->op.loss;
     int ret_value;
     ret_value = loss_pkt(pkt);
     if(ret_value == 1){
-      printf("LOSS PACKET IN EXEC_OPERATION\n");
       return 1;
     }
   }

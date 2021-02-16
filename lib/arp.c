@@ -32,11 +32,6 @@ void proc_arp(struct interface *iface, struct arphdr *arphdr){
   }
 }
 
-//void init_arptbl(struct arpentry *arptbl){
-//  *arptbl = malloc(sizeof(struct arpentry));
-//  (*arptbl)->entries = NULL;
-//}
-
 void print_arptbl(struct arpentry *arptbl){
   char ipstr[16];
   char macstr[16];
@@ -70,9 +65,7 @@ void update_arpentry(struct arpentry *arptbl, struct arpentry *entry){}
 
 struct arpentry *search_arpentry(struct arpentry *arptbl, in_addr_t search_ip){
   struct arpentry *e;
-  //printf("arp test8.0\n");
   for(e=arptbl->next; e; e=e->next){
-    //printf("arp test8.1\n");
     if(e->ipaddr == search_ip){
       return e;
     }

@@ -18,7 +18,7 @@ struct flag_headder{
 };
 
 struct operation{
-  int loss;
+  double loss;
   int delay;
   int delay_per;
   int delay_ran;

@@ -67,7 +67,7 @@ struct connection *search_cnxentry(struct connection *cnxtbl , struct packet *pk
 
 int set_all(struct connection *cnxtbl, int id, int loss, int delay, char *before, int blen, char *after, int alen);
 int unset_all(struct connection *cnxtbl, int id);
-int set_loss(struct connection *cnxtbl, int id, int loss, int difftime);
+int set_loss(struct connection *cnxtbl, int id, double loss, int difftime);
 int unset_loss(struct connection *cnxtbl, int id);
 int set_delay(struct connection *cnxtbl, int id, int delay, int delay_per, int difftime);
 int unset_delay(struct connection *cnxtbl, int id);

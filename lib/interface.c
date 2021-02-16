@@ -37,15 +37,6 @@ void print_interface(struct interface *iface){
   printf("interface skfd: %d\n", iface->skfd);
   printf("interface mtu: %d\n", iface->mtu);
   print_mac_to_str(iface->macaddr);
-//  printf("interface loss: %d\n", iface->op->loss);
-//  printf("interface loss: %d\n", iface->op->delay);
-//  printf("interface loss: %d\n", iface->op->delay_per);
-//  printf("interface loss: %d\n", iface->op->delay_ran);
-//  printf("interface loss: %d\n", iface->op->modify);
-//  printf("interface loss: %d\n", iface->op->modify_per);
-//  printf("interface loss: %d\n", iface->op->modify);
-// 
-
   char ipstr[16];
   iptostr(iface->ipaddr, ipstr);
   printf("ipaddr:%s\n", ipstr);
@@ -53,14 +44,10 @@ void print_interface(struct interface *iface){
   printf("netmask:%s\n", ipstr);
   count_queue(iface);
   printf("\n");
-//  printf("interface ipaddr: %d\n", iface.skfd);
-//  printf("interface ipmask: %d\n", iface.skfd);
 }
 
 
 void *init_iface(struct interface *iface, char *ifname){
-//  struct interface *iface;
-//  iface = malloc(sizeof(struct interface));
   iface->name = malloc(strlen(ifname));
 
   if (iface->name == NULL){

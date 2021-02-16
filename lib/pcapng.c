@@ -481,7 +481,6 @@ void pcapng_send(struct packet *pkt, char *str){
       fclose(file);
     }
     else if(pkt->iphdr->protocol == IPPROTO_UDP){
-////      printf("udp\n");
       FILE *file;
       file=fopen(filename,"ab");
       struct udphdr *udp;
@@ -524,6 +523,7 @@ void pcapng_send(struct packet *pkt, char *str){
       fwrite(&block_udplength,sizeof(block_udplength),1,file);
       fclose(file);
     }
+    // ICMP出力はやっていない。おそらく動くと思うけどテストはしていない
 //    else if(pkt->iphdr->protocol == IPPROTO_ICMP){
 //      FILE *file;
 //      file=fopen(filename,"ab");

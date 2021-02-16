@@ -5,7 +5,8 @@
 
 #include "common.h"
 #include "mongo.h"
-
+/* TEST VERSION*/
+/* rubyのコントローラでmongoを処理することにしたのでファイル事態が多分いらない*/
 void mongo_search(char *scenario_name){
   char *ip = "localhost";
   char *port = "27017";

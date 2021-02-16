@@ -104,7 +104,6 @@ struct packet *malloc_pkt(){
 }
 
 void free_pkt(struct packet *pkt){
-  //printf("free pkt test\n");
   pthread_mutex_lock(&mutex);
   pkt->next = free_pkt_queue;
   free_pkt_queue = pkt;
@@ -117,7 +116,6 @@ void proc_pkt(struct packet *pkt){
   pkt->ethhdr = (struct ethhdr *)hdr;
   hdr+=ETHER_HDR_LEN;
   u_int16_t etype = ntohs(pkt->ethhdr->h_proto);
-//  printf("etype %d\n", etype);
   switch(etype){
   case ETHERTYPE_ARP:
     pkt->arphdr = (struct arphdr *)hdr;
@@ -362,13 +360,6 @@ void enqueue(struct packet *queue, struct packet *pkt){
   pthread_mutex_unlock(&mutex);
 
 }
-
-//void delay_enqueue(struct packet *queue, struct packet *pkt){
-//  pthread_mutex_lock(&mutex);
-//  pkt->next = (*queue);
-//  (*queue) = pkt;
-//  pthread_mutex_unlock(&mutex);
-//}
 
 struct packet *dequeue(struct packet *queue){
   struct packet *q;

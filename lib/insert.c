@@ -12,6 +12,8 @@
 #include <net/ethernet.h>
 #include <pthread.h>
 #include <pcap.h>
+#include <arpa/inet.h>
+
 
 #include "interface.h"
 #include "routing.h"
@@ -65,53 +67,17 @@ int flag_check(struct interface *iface, struct packet *pkt){
       return 1;
 }
 
-void insert_tcppkt(int cnxid, void *arg, struct connection cnxtbl){
+void insert_tcppkt(int cnxid, void *arg, struct connection *cnxtbl){
   pass_insert *pass;
   pass = arg;
-  printf("number of insert packet:%d\n",pass->n);
-  printf("thread_size:%d\n",pass->thr);
   printf("TCP flag:SYN\n");
   struct connection *c;
   int i=0;
   sleep(pass->difftime);
   pthread_t inserter;
-  for(c=cnxtbl.next;c;c=c->next){
+  for(c=cnxtbl->next;c;c=c->next){
     if(c->id == cnxid){
       pass->c=c;
-//      pass->iface=iface[i];
-      //TCP version
-      //pcapng ver
-      if(pass->pcapng==1){
-        //if(!strcmp(pass->iface->name,"eth1"))
-        //  pcapng_global_header("test1.pcapng");
-        //else
-        //  pcapng_global_header("test2.pcapng");
-      }
-      //pcap ver
-      if(pass->pcap==1){
-        static const unsigned char pcap_global[24] = {
-          0xd4, 0xc3, 0xb2, 0xa1,
-          0x02, 0x00,
-          0x04, 0x00,
-          0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x04, 0x01,
-          0x01, 0x00, 0x00, 0x00
-        };
-        //test.pcap 初期化
-        FILE *file;
-        file=fopen("insert_tcp.pcap","wb");
-        fwrite(pcap_global,sizeof(pcap_global),1,file);
-        fclose(file);
-      }
-//      char filename[30] = {'\0'};
-//     sprintf(filename, "./test/syn_flood_count%d.txt",pass->thr);
-//      count=fopen(filename,"wb");
-//      fclose(count);
-//      count=fopen(filename,"ab");
-//      pass->fp = count;
-      //time_t start = time(NULL);
-      //printf("start %s", ctime(&start));
       if (c->proto == IPPROTO_TCP){
         for(int i=0; i<pass->thr; i++){
          pthread_create(&inserter, NULL, &insert_tcppkt_loop, pass);
@@ -121,14 +87,7 @@ void insert_tcppkt(int cnxid, void *arg, struct connection cnxtbl){
     }
     i+=1;
   }
-  void *ret;
-  if (pthread_join(inserter, &ret) != 0) {
-    perror("pthread_create() error");
-    exit(3);
-  }
-//  fclose(count);
 }
-
 
 void *insert_tcppkt_loop(void *arg){
   int  flag=1;
@@ -274,14 +233,14 @@ void *insert_tcppkt_loop(void *arg){
   return 0;
 }
 
-void insert_udppkt(int cnxid, void *arg, struct connection cnxtbl){
+void insert_udppkt(int cnxid, void *arg, struct connection *cnxtbl){
   pass_insert *pass;
   pass = arg;
   struct connection *c;
   sleep(pass->difftime);
   printf("start udp\n");
   int i=0;
-  for(c=cnxtbl.next;c;c=c->next){
+  for(c=cnxtbl->next;c;c=c->next){
     pthread_t inserter;
     if(c->id == cnxid){
       pass->c=c;
@@ -464,14 +423,14 @@ void *insert_udppkt_loop(void *arg){
   return 0;
 }
 
-void insert_icmppkt(int cnxid, void *arg, struct connection cnxtbl){
+void insert_icmppkt(int cnxid, void *arg, struct connection *cnxtbl){
   pass_insert *pass;
   pass = arg;
   struct connection *c;
   int i=0;
   sleep(pass->difftime);
   printf("start icmp\n");
-  for(c=cnxtbl.next;c;c=c->next){
+  for(c=cnxtbl->next;c;c=c->next){
     pthread_t inserter;
     if(c->id == cnxid){
       pass->c=c;
