@@ -9,8 +9,6 @@
 #include <net/if_arp.h>
 #include <pthread.h>
 #include <pcap.h>
-#include <unistd.h>
-
 
 #include "./lib/interface.h"
 #include "./lib/routing.h"
@@ -49,30 +47,25 @@ int main(int argc, char *argv[]){
     char ipstr[16];
     iptostr(iface[i]->ipaddr, ipstr);
   }
-  iface[0]->skfd_next = iface[1]->skfd;
-  iface[1]->skfd_next = iface[0]->skfd;
 
   add_rtgentry(rtgtbl, make_rtgentry(iface[0]));
   add_rtgentry(rtgtbl, make_rtgentry(iface[1]));
 
   pthread_mutex_init(&mutex, NULL);
-//  pthread_t recver[2], sender[2];
+  pthread_t recver[2], sender[2];
   pthread_t delay[2];
-////  pthread_t handler_loop[2];
-//  pthread_t capture[2];
-  pthread_t recver[2];
+  pthread_t capture[2];
 
   for(int i=0; i<ifnum; i++){
     pthread_create(&recver[i], NULL, &recv_loop, iface[i]);
-//    pthread_create(&sender[i], NULL, &send_loop, iface[i]);
+    pthread_create(&sender[i], NULL, &send_loop, iface[i]);
     pthread_create(&delay[i] , NULL, &delay_loop, iface[i]);
-//    pthread_create(&handler_loop[i] , NULL, &packet_handler, iface[i]);
 //    pthread_create(&capture[i], NULL, &pcapng_capture_loop, iface[i]);
   }
+
   pthread_t cmdsrv;
   pthread_create(&cmdsrv, NULL, &cmd_loop, cnxtbl);
-  pthread_join(recver[0], NULL);
-//  pthread_join(cmdsrv, NULL);
+  pthread_join(cmdsrv, NULL);
 
  return 0;
 }
