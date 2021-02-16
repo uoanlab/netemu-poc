@@ -1,12 +1,126 @@
 require 'socket'
 require 'rubygems'
-require 'mongo'
-require 'bson'
+#require 'mongo'
+#require 'bson'
 
-Mongo::Logger.logger.level = Logger::FATAL
-Mongo::Logger.logger       = Logger.new('mongo.log')
-Mongo::Logger.logger.level = Logger::INFO
+#Mongo::Logger.logger.level = Logger::FATAL
+#Mongo::Logger.logger       = Logger.new('mongo.log')
+#Mongo::Logger.logger.level = Logger::INFO
 
+def flag_to_option(flag)
+  option = ""
+  flag.each{|f|
+    option += " "
+    opt = f.split(":")[0]
+    value = f.split(":")[1]
+    case opt
+    #スレッド
+    when '-T' then
+      option += "T #{value}"
+    #パケット数
+    when '-N' then
+      option += "N #{value}"
+    #y秒後開始
+    when '-y' then
+      option += "y #{value}"
+    #pcap形式で保存*テスト必要かも
+    when '-X' then
+      option += "X"
+    #pcapng形式で保存*テスト必要かも
+    when '-G' then
+      option += "G"
+    ##### IP HEADER OPTION 
+    # 送信元ipを入力したipに偽装する
+    when '-s' then
+      option += "s #{value}"
+    # 送信元ipをランダムに偽装する
+    when '-r' then
+      option += "r"
+    # 送信先ipを入力したipに偽装する
+    when '-j' then
+      option += "j #{value}"
+    # 送信先ipをランダムに偽装する
+    when '-J' then
+      option += "J"
+    # ttlを指定する
+    when '-t' then
+      option += "t #{value}"
+    # flag offsetを指定する
+    when '-f' then
+      option += "f #{value}"
+    # type off serviceを指定する
+    when '-o' then
+      option += "o #{value}"
+    # type off serviceを指定する
+    when '-o' then
+      option += "o #{value}"
+    ##### TCP HEADER OPTION 
+    # Window sizeを指定する
+    when '-W' then
+      option += "W #{value}"
+    # Acknowledgment numberを指定する
+    when '-L' then
+      option += "L #{value}"
+    # Sequence numberを指定する
+    when '-M' then
+      option += "M #{value}"
+    # 間違ったチェックサムを指定する
+    when '-B' then
+      option += "B #{value}"
+    # doffを指定する
+    when '-O' then
+      option += "O #{value}"
+    # destination portを指定する
+    when '-D' then
+      option += "D #{value}"
+    # sender portを指定する
+    when '-Z' then
+      option += "Z #{value}"
+    # ACK FLAGを立てる
+    when '-A' then
+      option += "A"
+    # FIN FLAGを立てる
+    when '-F' then
+      option += "F"
+    # PSH FLAGを立てる
+    when '-P' then
+      option += "P"
+    # RST FLAGを立てる
+    when '-R' then
+      option += "R"
+    # URG FLAGを立てる
+    when '-U' then
+      option += "U"
+    # SYN FLAGを立てる
+    when '-S' then
+      option += "S"
+    # ペイロードを載せる 
+    when '-d' then
+      option += "d #{value}"
+    ##### UDP HEADER OPTION 
+    # destination portを指定する
+    when '-z' then
+      option += "z #{value}"
+    # sender portを指定する
+    when '-d' then
+      option += "d #{value}"
+    ##### ICMP HEADER OPTION 
+    # ICMP TYPEを指定する
+    when '-Y' then
+      option += "Y #{value}"
+    # ICMP codeを指定する
+    when '-C' then
+      option += "C #{value}"
+    # echo/replyの時のICMP idを指定する
+    when '-I' then
+      option += "I #{value}"
+    # echo/replyの時のシーケンスナンバーを指定する
+    when '-S' then
+      option += "S #{value}"
+    end
+  }
+  return option
+end
 
 def print_mode
   puts "mode list"
@@ -49,6 +163,21 @@ def setModify(con_id, before, after, per, difftime)
   sleep(0.1)
 end
 
+def setInsert(con_id, protocol_type, flag)
+  if(protocol_type == 'tcp')
+    option = flag_to_option(flag)
+    puts option
+    $sock.print("insert #{con_id} #{protocol_type} #{option}")
+  elsif(protocol_type == 'udp')
+    option = flag_to_option(flag)
+    $sock.print("insert #{con_id} #{protocol_type} #{option}")
+  elsif(protocol_type == 'icmp')
+    option = flag_to_option(flag)
+    $sock.print("insert #{con_id} #{protocol_type} #{option}")
+  end
+  sleep(0.1)
+end
+
 def execScenario(row)
   print "input connection id: "
   cnxid = gets
@@ -59,9 +188,9 @@ def execScenario(row)
 end
 
 $sock = TCPSocket.open("127.0.0.1", 55555)
-$db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
-$c = $db[:scenario]
-
+#$db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
+#$c = $db[:scenario]
+#
 loop{
   print_mode
   print "input command num: "
@@ -75,7 +204,7 @@ loop{
     puts "input Connection table id"
     puts "[source ip] [dest ip] [TCP] [sport] [dport]"
     puts "example:"
-    puts "192.168.11.70 192.168.11.80 TCP 11111 22222"
+    puts "192.168.11.70 192.168.11.80/24 TCP 11111 22222"
     sip, dip, protocol, sport, dport = gets.split(" ")
     puts "generate #{sip} #{dip} #{protocol} #{sport} #{dport}"
     $sock.print("generate #{sip} #{dip} #{protocol} #{sport} #{dport}")
@@ -124,7 +253,15 @@ loop{
       setModify(con_id, before, after, per, 0);
     # insert setting
     elsif(manipulate_id == 4)
-      puts "insert"
+      puts "input insert param"
+      puts "[connection_table_id] [protocol type] [flags]"
+      puts "example:"
+      puts "1 tcp -s:192.168.57.20 -N:1"
+      cmd = gets
+      con_id = cmd.split(" ")[0]
+      protocol_type = cmd.split(" ")[1]
+      flags = cmd.split(" ")[2..-1]
+      setInsert(con_id, protocol_type, flags)
     end
   elsif cmd == 6
     print_all_scenario()
