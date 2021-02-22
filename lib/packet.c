@@ -501,3 +501,10 @@ void print_queue(struct packet *queue){
   for(pkt = queue; pkt->next!=NULL; pkt = pkt->next)
     print_pkt(pkt);
 }
+
+int count_pkt_in_queue(struct packet *queue){
+  int counter=0;
+  struct packet *pkt;
+  for(pkt=queue;pkt;pkt=pkt->next) counter++;
+  return counter;
+}

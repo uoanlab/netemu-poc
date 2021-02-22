@@ -83,3 +83,4 @@ u_int16_t calc_tcp_cksum(struct iphdr *iphdr, struct tcphdr *tcphdr);
 u_int16_t calc_udp_cksum(struct iphdr *iphdr, struct udphdr *udphdr);
 unsigned short checksum(unsigned short *ptr,int nbytes);
 void print_queue(struct packet *queue);
+int count_pkt_in_queue(struct packet *queue);

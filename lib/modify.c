@@ -80,3 +80,19 @@ int modify_pkt(struct packet *pkt, char *before, int blen, char *after, int alen
   return 1;
 }
 
+int chk_rtns(struct packet *queue, struct packet *pkt){
+  /* 保存されている古いパケットはfreeする */
+  struct packet *saved_pkt;
+  for(saved_pkt=queue;saved_pkt;saved_pkt=saved_pkt->next){
+    if((saved_pkt->tcphdr->seq == pkt->tcphdr->seq) &&
+       (saved_pkt->tcphdr->ack_seq == pkt->tcphdr->ack_seq) &&
+       (memcmp(saved_pkt->payload, pkt->payload, (saved_pkt->paylen<pkt->paylen)?pkt->paylen:saved_pkt->paylen) == 0)){
+      pkt->is_rtns  = 1;
+      pkt->diff_seq = saved_pkt->diff_seq;
+      pkt->diff_ack = saved_pkt->diff_ack;
+      copy_operation(&pkt->op, &saved_pkt->op);
+      return 1;
+    }
+  }
+  return 0;
+}
