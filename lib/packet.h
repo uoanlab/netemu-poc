@@ -21,6 +21,7 @@ struct packet{
   /* test code */
   int                  diff_seq;
   int                  diff_ack;
+  int                  tot_diff;
   /* test code */
   struct packet        *next;
 };

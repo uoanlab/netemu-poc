@@ -9,6 +9,7 @@ struct interface{
   struct operation *op;
   struct packet *queue;
   struct packet *delay_queue;
+  struct packet *seq_ack_controll_queue;
   struct routingentry *rtgtbl;
   struct connection *cnxtbl;
   struct arpentry *arptbl;

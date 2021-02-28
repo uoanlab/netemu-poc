@@ -45,7 +45,9 @@ void *send_loop(void *arg){
 
   for(;;){
     for(pkt=dequeue(iface->queue); pkt; pkt=dequeue(iface->queue)){
-     if(send(iface->skfd, pkt->buf, pkt->size, 0) < 0){
+      if(seq_ack_controll(iface, pkt))
+        pkt->tcphdr->check = calc_tcp_cksum(pkt->iphdr, pkt->tcphdr);
+      if(send(iface->skfd, pkt->buf, pkt->size, 0) < 0){
         perror("SEND");
       }
       else{
@@ -146,18 +148,6 @@ void *recv_loop(void *arg){
       if((conn = search_cnxentry(iface->cnxtbl, pkt))){
         copy_operation(&pkt->op, &conn->op);
       }
-      //seq ack controll
-    	if(!chk_rtns(conn->saved_pkt_queue, pkt)){
-    	  pkt->diff_seq = conn->diff_seq;
-    	  pkt->diff_ack = conn->diff_ack;
-    	  copy_operation(&pkt->op, &conn->op);
-    	  struct packet *copy = malloc_pkt();
-    	  copy_pkt(copy, pkt);
-    	  enqueue(conn->saved_pkt_queue, copy);
-    	  if(10 < count_pkt_in_queue(conn->saved_pkt_queue)) {
-    	    free_pkt(dequeue(conn->saved_pkt_queue));
-    	  }
-    	}
     }
     else if(pkt->udphdr){
       struct connection *conn;
@@ -186,7 +176,7 @@ int packet_handler(struct packet *pkt, struct routingentry *route, struct interf
   if(pkt->op.modify){
     struct timeval before, after;
     gettimeofday(&before, NULL);
-    modify_pkt(pkt, pkt->op.mset.before, pkt->op.mset.blen, pkt->op.mset.after, pkt->op.mset.alen, iface->cnxtbl);
+    modify_pkt(pkt, pkt->op.mset.before, pkt->op.mset.blen, pkt->op.mset.after, pkt->op.mset.alen, iface->cnxtbl, iface);
     gettimeofday(&after, NULL);
     modify_log_output("test.log", before, after);
   }

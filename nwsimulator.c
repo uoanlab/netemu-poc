@@ -14,6 +14,7 @@
 #include "./lib/routing.h"
 #include "./lib/common.h"
 #include "./lib/connection.h"
+#include "./lib/packet.h"
 #include "./lib/arp.h"
 #include "./lib/pcapng.h"
 #include "./lib/packet_capture.h"
@@ -38,11 +39,16 @@ int main(int argc, char *argv[]){
 
 /* interface setting */
   struct interface *iface[2];
+  struct packet *seq_ack_controll;
+  seq_ack_controll = malloc(sizeof(struct packet));
+  init_pkt(seq_ack_controll);
+
   for(int i=0; i<ifnum; i++){
     iface[i] = malloc(sizeof(struct interface));
     init_iface(iface[i], argv[i+1]);
     iface[i]->rtgtbl = rtgtbl;
     iface[i]->cnxtbl = cnxtbl;
+    iface[i]->seq_ack_controll_queue = seq_ack_controll;
     init_operation(iface[i]);
     char ipstr[16];
     iptostr(iface[i]->ipaddr, ipstr);
