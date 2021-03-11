@@ -1,7 +1,7 @@
 CC=gcc
 
 nwsimulator: nwsimulator.o ./lib/interface.o ./lib/routing.o ./lib/common.o ./lib/packet_handler.o ./lib/packet.o ./lib/arp.o ./lib/connection.o ./lib/modify.o ./lib/loss.o  ./lib/pcapng.o ./lib/packet_capture.o ./lib/cmd_server.o ./lib/dhcp.o ./lib/delay.o ./lib/insert.o
-	gcc -Wall -pthread ./lib/interface.o ./lib/routing.o ./lib/common.o ./lib/packet.o ./lib/packet_handler.o ./lib/arp.o nwsimulator.o ./lib/connection.o ./lib/modify.o ./lib/loss.o ./lib/pcapng.o ./lib/packet_capture.o ./lib/cmd_server.o ./lib/dhcp.o ./lib/delay.o ./lib/insert.o -o nwsimulator -lm -lpcap
+	gcc -Wall -pthread ./lib/interface.o ./lib/routing.o ./lib/common.o ./lib/packet.o ./lib/packet_handler.o ./lib/arp.o nwsimulator.o ./lib/connection.o ./lib/modify.o ./lib/loss.o ./lib/pcapng.o ./lib/packet_capture.o ./lib/cmd_server.o ./lib/dhcp.o ./lib/delay.o ./lib/insert.o -o nwemulator -lm -lpcap
 	rm nwsimulator.o ./lib/*.o
 
 nwsimulator.o: nwsimulator.c
