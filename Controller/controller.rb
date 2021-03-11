@@ -136,7 +136,6 @@ def print_mode
   puts "9. exit"
   puts "===================================="
   puts 
-  puts "input mode id:"
 end
 
 def print_all_scenario()
