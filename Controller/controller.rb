@@ -152,13 +152,13 @@ def set_loss(con_id, loss_per, time)
   sleep(0.1)
 end
 
-def setDelay(con_id, delay, per, difftime)
-  $sock.print("setdelay #{con_id} #{delay} #{per} #{difftime}")
+def setDelay(con_id, delay, per, time)
+  $sock.print("setdelay #{con_id} #{delay} #{per} #{time}")
   sleep(0.1)
 end
 
-def setModify(con_id, before, after, per, difftime)
-  $sock.print("setmodify #{con_id} #{before} #{after} #{per} #{difftime}")
+def setModify(con_id, before, after, per, time)
+  $sock.print("setmodify #{con_id} #{before} #{after} #{per} #{time}")
   sleep(0.1)
 end
 
@@ -233,7 +233,12 @@ loop{
       puts "example:"
       puts "1 100 100"
       con_id, loss_per, time = gets.split(" ")
-      set_loss(con_id, loss_per, time)
+
+      if con_id == nil || loss_per == nil || time == nil
+        puts "bad param"
+      else
+        set_loss(con_id, loss_per, time)
+      end
     elsif(manipulate_id == 2)
     # delay setting
       puts "input delay param"
@@ -241,15 +246,25 @@ loop{
       puts "example:"
       puts "1 10 100"
       con_id, delay_time, per = gets.split(" ")
-      setDelay(con_id, delay_time, per, 0);
+
+      if con_id == nil || delay_time == nil || per == nil
+        puts "bad param"
+      else
+        setDelay(con_id, delay_time, per, 0);
+      end
     # modify setting
     elsif(manipulate_id == 3)
       puts "input modify param"
-      puts "[connection_table_id] [before] [after] [per] [difftime]"
+      puts "[connection_table_id] [before] [after] [per] [time]"
       puts "example:"
       puts "1 https http 100 0"
-      con_id, before, after, per, difftime = gets.split(" ")
-      setModify(con_id, before, after, per, 0);
+      con_id, before, after, per, time = gets.split(" ")
+
+      if con_id == nil || per == nil || time == nil
+        puts "bad param"
+      else
+        setModify(con_id, before, after, per, 0);
+      end
     # insert setting
     elsif(manipulate_id == 4)
       puts "input insert param"
