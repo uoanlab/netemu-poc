@@ -138,9 +138,9 @@ def print_mode
   puts 
 end
 
-def print_all_scenario()
+def print_all_scenario(ip, port)
   puts "======================"
-  $db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
+  $db = Mongo::Client.new([ "#{ip}:#{port}" ], :database => 'scenario')
   $c = $db[:scenario]
   $c.find.each{|row|
     puts "#{row['id'].to_s.rjust(2)} #{row['name']}"
@@ -229,7 +229,7 @@ loop{
     elsif(manipulate_id == 1)
     # loss setting
       puts "input operation"
-      puts "[connection id] [loss_per] [time]"
+      puts "[connection_table_id] [loss_per] [time]"
       puts "example:"
       puts "1 100 100"
       con_id, loss_per, time = gets.split(" ")
@@ -278,10 +278,14 @@ loop{
       setInsert(con_id, protocol_type, flags)
     end
   elsif cmd == 6
-    print_all_scenario()
+    puts "input: ip port"
+    puts "example: 127.0.0.1:27017"
+    ip, port = gets.split(":")
+
+    print_all_scenario(ip, port)
     print "input scenario_id: "
     scenario_id = gets.to_i
-    $db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
+    $db = Mongo::Client.new([ "#{ip}:#{port}" ], :database => 'scenario')
     $c = $db[:scenario]
     $c.find('id' => scenario_id).each{|row|
       execScenario(row)
