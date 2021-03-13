@@ -1,11 +1,11 @@
 require 'socket'
 require 'rubygems'
-#require 'mongo'
-#require 'bson'
+require 'mongo'
+require 'bson'
 
-#Mongo::Logger.logger.level = Logger::FATAL
-#Mongo::Logger.logger       = Logger.new('mongo.log')
-#Mongo::Logger.logger.level = Logger::INFO
+Mongo::Logger.logger.level = Logger::FATAL
+Mongo::Logger.logger       = Logger.new('mongo.log')
+Mongo::Logger.logger.level = Logger::INFO
 
 def flag_to_option(flag)
   option = ""
@@ -140,9 +140,12 @@ end
 
 def print_all_scenario()
   puts "======================"
+  $db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
+  $c = $db[:scenario]
   $c.find.each{|row|
     puts "#{row['id'].to_s.rjust(2)} #{row['name']}"
   }
+  $db.close
   puts "======================"
   puts 
 end
@@ -187,9 +190,6 @@ def execScenario(row)
 end
 
 $sock = TCPSocket.open("127.0.0.1", 55555)
-#$db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
-#$c = $db[:scenario]
-#
 loop{
   print_mode
   print "input command num: "
@@ -281,9 +281,12 @@ loop{
     print_all_scenario()
     print "input scenario_id: "
     scenario_id = gets.to_i
+    $db = Mongo::Client.new([ '127.0.0.1:27017' ], :database => 'scenario')
+    $c = $db[:scenario]
     $c.find('id' => scenario_id).each{|row|
       execScenario(row)
     }
+    $db.close
   elsif cmd == 7
   # pcap   
   elsif cmd == 8
