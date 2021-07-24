@@ -4,6 +4,6 @@
 University of Aizu, 2020
 
 ## Authors & Contributors
-Keita YOSHIDA
-Akihito NAKAMURA <nakamura [at] u-aizu.ac.jp>
+- Keita YOSHIDA
+- Akihito NAKAMURA <nakamura [at] u-aizu.ac.jp>
 
